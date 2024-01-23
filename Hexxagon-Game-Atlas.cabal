@@ -1,0 +1,105 @@
+cabal-version:      3.6
+name:               Hexxagon-Game-Atlas
+version:            0.1.0.0
+synopsis:           Hexxagon game on the Cardano Blockchain : Off-Chain Code
+-- description:
+-- homepage:
+license:            NONE
+author:             Dr-Mazen-Khaddaj, Andrew Garrett Wright
+maintainer:         MazenKhaddaj@outlook.com
+-- copyright:
+category:           Blockchain, Cardano, Game
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common common
+    default-language: GHC2021
+    default-extensions:
+        DataKinds
+        DeriveAnyClass
+        DerivingStrategies
+        DerivingVia
+        GADTs
+        LambdaCase
+        MultiWayIf
+        OverloadedStrings
+        RecordWildCards
+        RoleAnnotations
+        TypeFamilies
+        UndecidableInstances
+        ViewPatterns
+
+    ghc-options: -Wall -Wincomplete-uni-patterns -Wunused-packages
+
+common plutus-ghc-options
+    -- so unfoldings are present even when compiled without optmizations
+    ghc-options:    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+                    -Wno-partial-type-signatures
+
+    -- expose all unfoldings, so plutustx compiler can do its job
+    ghc-options:    -fexpose-all-unfoldings -fobject-code
+                    -fplugin-opt PlutusTx.Plugin:defer-errors
+
+    -- set target plutus-core version
+    ghc-options:    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
+
+library
+    import:           common
+    hs-source-dirs:   src
+    exposed-modules:  MyLib
+    -- other-modules:
+    -- other-extensions:
+    build-depends:    base
+                    , aeson
+                    , atlas-cardano
+                    , swagger2
+                    , servant-server
+                    , servant-swagger
+                    , containers
+                    , text
+
+executable Hexxagon-Game-Atlas
+    import:           common
+    hs-source-dirs:   app
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
+    build-depends:    base
+                    , atlas-cardano
+                    , Hexxagon-Game-Atlas
+
+executable Hexxagon-Game-Server
+    import:           common
+    hs-source-dirs:   server
+    main-is:          server-main.hs
+    ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
+    build-depends:    base
+                    , Hexxagon-Game-Atlas
+                    , aeson-pretty
+                    , bytestring
+                    , atlas-cardano
+                    , servant-server
+                    , transformers
+                    , wai
+                    , wai-cors
+                    , http-types
+                    , warp
+
+test-suite Hexxagon-Game-Atlas-test
+    import:           common
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Main.hs
+    -- other-modules:
+    -- other-extensions:
+    ghc-options: -threaded -rtsopts
+    build-depends:    base
+                    , Hexxagon-Game-Atlas
+                    , containers
+                    , atlas-cardano
+                    , mtl
+                    , plutus-simple-model
+                    , tasty
+                    , tasty-hunit
