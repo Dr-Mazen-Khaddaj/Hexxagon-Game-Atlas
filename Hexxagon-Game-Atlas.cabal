@@ -29,6 +29,7 @@ common common
         TypeFamilies
         UndecidableInstances
         ViewPatterns
+        OverloadedRecordDot
 
     ghc-options: -Wall -Wincomplete-uni-patterns -Wunused-packages
 
@@ -47,7 +48,9 @@ common plutus-ghc-options
 library
     import:           common
     hs-source-dirs:   src
-    exposed-modules:  MyLib
+    exposed-modules:  MainFunction
+                    , Functions
+                    , DataTypes
     -- other-modules:
     -- other-extensions:
     build-depends:    base
@@ -58,6 +61,15 @@ library
                     , servant-swagger
                     , containers
                     , text
+
+                    , bytestring
+                    , cardano-api
+                    , data-default
+                    , plutus-ledger-api
+                    , plutus-tx-plugin
+                    , plutus-tx
+                    , serialise
+                    , hex
 
 executable Hexxagon-Game-Atlas
     import:           common
