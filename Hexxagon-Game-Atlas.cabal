@@ -104,7 +104,7 @@ test-suite Hexxagon-Game-Atlas-test
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          Main.hs
-    -- other-modules:
+    other-modules:    Arbitrary
     -- other-extensions:
     ghc-options: -threaded -rtsopts
     build-depends:    base
@@ -114,4 +114,10 @@ test-suite Hexxagon-Game-Atlas-test
                     , mtl
                     , plutus-simple-model
                     , tasty
+                    , tasty-quickcheck
+                    , tasty-hedgehog
                     , tasty-hunit
+                    , hedgehog
+                    , hedgehog-quickcheck
+                    , QuickCheck
+                    , text

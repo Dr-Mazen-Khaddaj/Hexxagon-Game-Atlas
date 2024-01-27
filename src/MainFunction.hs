@@ -1,4 +1,6 @@
-module MainFunction (someFunc) where
+module MainFunction (makeMove) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import DataTypes (Move, Board)
+
+makeMove :: Move -> Board -> Board
+makeMove = undefined
