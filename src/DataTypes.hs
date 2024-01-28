@@ -61,6 +61,7 @@ data    RunGame         = PlayTurn
                         | TimeOut
 
 -- | Show Instance | --
+
 instance Show Hexagon where show :: Hexagon -> String
                             show Empty  = "-"
                             show Red    = "R"
@@ -68,74 +69,72 @@ instance Show Hexagon where show :: Hexagon -> String
 
 instance Show Board where
     show :: Board -> String
-    show = concatLines . (showLine <$>) . zip [1..] . fillBoard . destructure
-        where
-            destructure :: Board -> [[(Position,Hexagon)]]
+    show = showBoard Vertex . organizeBoard
+
+---- | Show Board | ----
+
+data Orientation = Vertex | Edge
+data Side = Top | Middle | Bottom
+
+organizeBoard :: Board -> [[Maybe (Position,Hexagon)]]
+organizeBoard = (sortLine <$>) . fillBoard . destructure
+    where
             destructure (Board boardMap) = List.groupBy ((==) `on` getY . fst) . sortBoard $ Map.toList boardMap
-
             sortBoard = List.sortOn (Down . getY . fst)
-
             fillBoard (xH:xs@(xL:_)) = xH : gap <> fillBoard xs
                 where   getLevel = getY . fst . head
                         gap = replicate (getLevel xH - getLevel xL - 1) []
             fillBoard list = list
 
-            showLine :: (Int, [(Position,Hexagon)]) -> [String]
-            showLine (n, line) = (indentation <>)  <$>  [ concatMap showTop sortedList
-                                                        , concatMiddle $ showMiddle <$> sortedList
-                                                        , concatMap showBottom sortedList
-                                                        ]
-                where
-                    indentation = '\n' : replicate (2*n) ' '
-                    showTop    (Just _)     = " / \\"
-                    showTop    Nothing      = "    "
-                    -- showMiddle (Just (p,h)) = "|" <> show (mod p.getX 10) <> show h <> show (mod p.getY 10) <> "|"
-                    showMiddle (Just (_,h)) = "| " <> show h <> " |"
-                    showMiddle Nothing      = "    "
-                    showBottom (Just _)     = " \\ /"
-                    showBottom Nothing      = "    "
-                    sortedList = fillLine 0 $ List.sortOn (getX . fst) line
-                    fillLine i (xL:xs) = if getX (fst xL) == i  then Just xL : fillLine (i+1) xs
-                                                                else Nothing : fillLine (i+1) (xL:xs)
-                    fillLine _ [] = []
-                    concatMiddle (m1:m2:ms) = if last m1 == '|' then m1 <> concatMiddle (tail m2 : ms)
-                                                                else m1 <> concatMiddle (m2 : ms)
-                    concatMiddle ms = concat ms
+            sortLine = fillLine 0 . List.sortOn (getX . fst)
+            fillLine i (xL:xs) = if getX (fst xL) == i  then Just xL : fillLine (i+1) xs
+                                                        else Nothing : fillLine (i+1) (xL:xs)
+            fillLine _ [] = []
 
-            concatLines :: [[String]] -> String
-            concatLines (line1 : line2 : ls) = head line1 <> line1 !! 1 <> concatLines ([line1 !! 2 `appendLine` head line2 , line2 !! 1 , line2 !! 2] : ls)
-                where
-                    appendLine (c1:cs1) (c2:cs2)    | c1 == ' ' = c2 : appendLine cs1 cs2
-                                                    | c2 == ' ' = c1 : appendLine cs1 cs2
-                                                    | otherwise = c1 : appendLine cs1 cs2
-                    appendLine [] cs = cs
-                    appendLine cs [] = cs
-            concatLines ls = concat $ concat ls
+showBoard :: Orientation -> [[Maybe (Position,Hexagon)]] -> String
 
---  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \ 
--- |    ||    ||    ||    ||    ||    ||    ||    ||    ||    ||    |
---  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \
---    |    ||    ||    ||    ||    ||    ||    ||    ||    ||    ||    |
---     \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  /  \  / 
+---- Show Board (Vertex Orientation) ----
+--  / \ / \ / \ / \ / \ / \ / \ / \ / \ / \
+-- |   |   |   |   |   |   |   |   |   |   |
+--  \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \
+--   |   |   |   |   |   |   |   |   |   |   |
+--    \ / \ / \ / \ / \ / \ / \ / \ / \ / \ /
+showBoard Vertex = concatLines . (showLine <$>) . zip [1..]
+    where
+        showLine :: (Int, [Maybe (Position,Hexagon)]) -> [String]
+        showLine (n, sortedLine) = (indentation <>) <$> (($ sortedLine) <$> [ concatMap (showHex Top)
+                                                                            , concatMiddle . (showHex Middle <$>)
+                                                                            , concatMap (showHex Bottom)
+                                                                            ])
+            where
+                indentation = '\n' : replicate (2*n) ' '
+                showHex Top    (Just _)     = " / \\"
+                -- showMiddle (Just (p,h)) = "|" <> show (mod p.getX 10) <> show h <> show (mod p.getY 10) <> "|"
+                showHex Middle (Just (_,h)) = "| " <> show h <> " |"
+                showHex Bottom (Just _)     = " \\ /"
+                showHex _    Nothing      = "    "
+                concatMiddle (m1:m2:ms) = if last m1 == '|' then m1 <> concatMiddle (tail m2 : ms)
+                                                            else m1 <> concatMiddle (m2 : ms)
+                concatMiddle ms = concat ms
 
---  / \ / \ / \ / \ / \ / \ / \ / \ / \ / \     / \ / \ / \ / \ / \ / \ / \ / \ / \
--- |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
---  \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \
---   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
---    \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ / \ /
+        concatLines :: [[String]] -> String
+        concatLines (line1 : line2 : ls) = head line1 <> line1 !! 1 <> concatLines ([line1 !! 2 `appendLine` head line2 , line2 !! 1 , line2 !! 2] : ls)
+            where
+                appendLine (c1:cs1) (c2:cs2)    | c1 == ' ' = c2 : appendLine cs1 cs2
+                                                | c2 == ' ' = c1 : appendLine cs1 cs2
+                                                | otherwise = c1 : appendLine cs1 cs2
+                appendLine [] cs = cs
+                appendLine cs [] = cs
+        concatLines ls = concat $ concat ls
 
+---- Show Board (Edge Orientation) ---- __    __    __    __
+-- /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
+-- \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
+--    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
+--    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
+--    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
+--       \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
+showBoard Edge = undefined
 
---  /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /-\ /B\ /-\ /-\
--- |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |3-2|   |   |
---  \-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\B/-\-/-\-/-\
---   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
---    \-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/-\-/
-
--- \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
--- /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
--- \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
--- /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
--- \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
--- /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
--- \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
--- 
+transposeBoard :: [] [Maybe (Position,Hexagon)] -> [] [Maybe (Position,Hexagon)]
+transposeBoard = undefined
