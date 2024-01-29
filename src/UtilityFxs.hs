@@ -1,4 +1,4 @@
-module  Functions   ( distance
+module  UtilityFxs  ( distance
                     ) where
 
 import DataTypes (Move (..), Position (..))

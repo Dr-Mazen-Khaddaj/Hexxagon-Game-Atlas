@@ -48,9 +48,10 @@ common plutus-ghc-options
 library
     import:           common
     hs-source-dirs:   src
-    exposed-modules:  MainFunction
-                    , Functions
-                    , DataTypes
+    exposed-modules:  DataTypes
+                    , UtilityFxs
+                    , MainFxs
+                    , IOFxs
     -- other-modules:
     -- other-extensions:
     build-depends:    base
