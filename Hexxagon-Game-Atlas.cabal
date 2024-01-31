@@ -52,6 +52,7 @@ library
                     , UtilityFxs
                     , MainFxs
                     , IOFxs
+                    , Variables
     -- other-modules:
     -- other-extensions:
     build-depends:    base

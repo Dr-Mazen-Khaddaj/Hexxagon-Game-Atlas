@@ -1,6 +1,7 @@
 module  DataTypes   ( Player            (..)
                     , Hexagon           (..)
                     , Position          (..)
+                    , Block
                     , Move              (..)
                     , Board             (..)
                     , Initialization    (..)
@@ -9,7 +10,7 @@ module  DataTypes   ( Player            (..)
                     , GameInfo          (..)
                     , RunGame           (..)
 
-                    , showBoard
+                    , destructureBoard, showBoard
                     , Orientation       (..)
                     , BoardMode         (..)
                     ) where
@@ -20,6 +21,7 @@ import  Data.List           qualified as List
 import  Data.Function       (on)
 import  Data.Ord            (Down(Down))
 
+------------------------------------------------------ | Data Types | ------------------------------------------------------
 --  Player
 data    Player          = RedPlayer  CurrencySymbol TokenName
                         | BluePlayer CurrencySymbol TokenName
@@ -28,12 +30,14 @@ data    Player          = RedPlayer  CurrencySymbol TokenName
 data    Hexagon         = Empty
                         | Red
                         | Blue
+                        deriving Eq
 
 data    Position        = Position  { getX :: Int
                                     , getY :: Int
                                     }
                         deriving (Show, Ord, Eq)
 
+type    Block           = (Position,Hexagon)
 newtype Board           = Board (Map.Map Position Hexagon)
 
 --  Move
@@ -64,13 +68,14 @@ data    RunGame         = PlayTurn
                         | GameOver Player
                         | TimeOut
 
--- | Show Instance | --
-
+---------------------------------------------------- | Show Instance | -----------------------------------------------------
+-- Show Hexxagon
 instance Show Hexagon where show :: Hexagon -> String
                             show Empty  = "-"
                             show Red    = "R"
                             show Blue   = "B"
 
+-- Show Board
 instance Show Board where
     show :: Board -> String
     show = showBoard Edge CoordsAndHexs
@@ -89,7 +94,7 @@ data Orientation = Vertex | Edge
 data BoardMode = Clear | OnlyHexagons | OnlyCoordinates | CoordsAndHexs
 data Side = Top | Middle | Bottom
 
-organizeBoard :: Orientation -> Board -> [[Maybe (Position,Hexagon)]]
+organizeBoard :: Orientation -> Board -> [[Maybe Block]]
 organizeBoard Vertex = (organizeLine <$>) . fillBoard . groupBoard . sortBoard . destructureBoard
     where
         groupBoard = List.groupBy ((==) `on` getY . fst)
@@ -106,9 +111,6 @@ organizeBoard Edge = (organizeLine <$>) . List.reverse . buildBoard 0 . destruct
         buildLevel n = List.partition (isAtLevel n)
         isAtLevel level = (level ==) . (\pos -> pos.getX + pos.getY) . fst
 
-destructureBoard :: Board -> [(Position, Hexagon)]
-destructureBoard (Board boardMap) = Map.toList boardMap
-
 organizeLine :: [(Position, b)] -> [Maybe (Position, b)]
 organizeLine = fillLine 0 . List.sortOn (getX . fst)
     where
@@ -117,7 +119,7 @@ organizeLine = fillLine 0 . List.sortOn (getX . fst)
         fillLine _ [] = []
 
 
-showOrganizedBoard :: Orientation -> BoardMode -> [[Maybe (Position,Hexagon)]] -> String
+showOrganizedBoard :: Orientation -> BoardMode -> [[Maybe Block]] -> String
 showOrganizedBoard orientation mode = case orientation of
     Edge    -> concatLines . pruneBoard . (showLine <$>) . zip [1..]
     Vertex  -> concatLines              . (showLine <$>) . zip [1..]
@@ -126,7 +128,7 @@ showOrganizedBoard orientation mode = case orientation of
         pruneLine l (c:cs) = c: drop l cs
         pruneLine _ [] = []
 
-        showLine :: (Int, [Maybe (Position,Hexagon)]) -> [String]
+        showLine :: (Int, [Maybe Block]) -> [String]
         showLine (n, sortedLine) = (indentation <>) <$> (($ sortedLine) <$> [ concatMap (showHex Top)
                                                                             , concatMiddle . (showHex Middle <$>)
                                                                             , concatMap (showHex Bottom)
@@ -175,3 +177,10 @@ showOrganizedBoard orientation mode = case orientation of
                 appendLine [] cs = cs
                 appendLine cs [] = cs
         concatLines ls = concat $ concat ls
+
+-------------------------------------------------- | Utility Functions | ---------------------------------------------------
+
+destructureBoard :: Board -> [Block]
+destructureBoard (Board boardMap) = Map.toList boardMap
+
+----------------------------------------------------------------------------------------------------------------------------
