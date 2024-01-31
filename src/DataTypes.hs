@@ -25,6 +25,7 @@ import  Data.Ord            (Down(Down))
 --  Player
 data    Player          = RedPlayer  CurrencySymbol TokenName
                         | BluePlayer CurrencySymbol TokenName
+                        deriving Eq
 
 --  Board
 data    Hexagon         = Empty
@@ -39,6 +40,7 @@ data    Position        = Position  { getX :: Int
 
 type    Block           = (Position,Hexagon)
 newtype Board           = Board (Map.Map Position Hexagon)
+                        deriving Eq
 
 --  Move
 data    Move            = Move      { initialPosition   :: Position

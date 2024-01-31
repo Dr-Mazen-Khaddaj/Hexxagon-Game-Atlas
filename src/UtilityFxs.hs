@@ -12,7 +12,7 @@ import qualified Data.Map as Map
 ----------------------------------------------------------------------------------------------------------------------------
 -- Calculate distance of a move
 distance :: Move -> Int
-distance m = abs deltaX + abs deltaY + abs (deltaX - deltaY)
+distance m = (`div` 2) $ abs deltaX + abs deltaY + abs (deltaX - deltaY)
     where
         Position xi yi = m.initialPosition
         Position xf yf = m.finalPosition
