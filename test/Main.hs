@@ -1,12 +1,13 @@
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 module Main (main) where
 import Test.QuickCheck (generate)
-import DataTypes (Hexagon (..), Position (..), Board (Board), showBoard, Orientation (..), BoardMode (..))
+import DataTypes (Hexagon (..), Position (..), Board (Board))
 import Arbitrary ( arbitrary )
 import Data.Char (chr)
 import qualified Data.Map as Map
 import UtilityFxs (makeEmptyBoard, makeEmptyClassicBoard, makeStartingBoard, getNearbyPositions)
 import Variables (classicBoard_S9DC3)
+import Instances (Orientation(..), BoardMode (..), showBoard)
 
 main :: IO ()
 main = do

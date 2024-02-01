@@ -49,6 +49,7 @@ library
     import:           common
     hs-source-dirs:   src
     exposed-modules:  DataTypes
+                    , Instances
                     , UtilityFxs
                     , MainFxs
                     , IOFxs
