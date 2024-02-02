@@ -2,16 +2,16 @@
 
 module Arbitrary (arbitrary) where
 
-import DataTypes (Hexagon (..), Position (Position), Board (Board))
-import Test.QuickCheck (Arbitrary (arbitrary), oneof, suchThat, vectorOf, Gen, chooseInt)
-import qualified Data.Map as Map
+import DataTypes         (Hexagon (..), Position (Position), Board (Board))
+import Test.QuickCheck   (Arbitrary (arbitrary), oneof, suchThat, vectorOf, Gen, chooseInt)
+import PlutusTx.AssocMap qualified as AssocMap
 
 instance Arbitrary Hexagon where arbitrary = oneof $ pure <$> [Empty,Red,Blue]
 
 instance Arbitrary Position where arbitrary = Position <$> genInt <*> genInt
                                     where genInt = arbitrary `suchThat` (\i -> i > 0 && i < 15)
 
-instance Arbitrary Board where arbitrary = Board . Map.fromList <$> genListOf100 500 arbitrary
+instance Arbitrary Board where arbitrary = Board . AssocMap.fromList <$> genListOf100 500 arbitrary
 -- genPositiveNonZeroInteger = arbitrary `suchThat` (> 0)
 
 _genListOf1 :: Int -> Gen a -> Gen [a]

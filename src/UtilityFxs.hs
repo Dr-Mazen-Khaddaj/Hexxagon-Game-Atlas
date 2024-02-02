@@ -6,8 +6,8 @@ module  UtilityFxs  ( distance
                     , makeStartingBoard
                     ) where
 
-import DataTypes (Move (..), Position (..), Board (Board), Hexagon (..), Block)
-import qualified Data.Map as Map
+import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block)
+import  PlutusTx.AssocMap   qualified as AssocMap
 
 ----------------------------------------------------------------------------------------------------------------------------
 -- Calculate distance of a move
@@ -23,7 +23,7 @@ distance m = (`div` 2) $ abs deltaX + abs deltaY + abs (deltaX - deltaY)
 getNearbyPositions :: Board -> Position -> Hexagon -> Integer -> [Position]
 getNearbyPositions (Board board) pos hex d = filter rightHex $ calculateNearbyPositions pos d
     where
-        rightHex p = case Map.lookup p board of
+        rightHex p = case AssocMap.lookup p board of
             Just h  -> h == hex
             Nothing -> False
 
@@ -45,19 +45,19 @@ calculateNearbyPositions (Position x y) d = [ Position (x + deltaX) (y + deltaY)
 
 -- Make a simple n by n sized empty board
 makeEmptyBoard :: Integer -> Board
-makeEmptyBoard size = Board $ Map.fromList [(Position x y , Empty) | x <- [1..size] , y <- [1..size]]
+makeEmptyBoard size = Board $ AssocMap.fromList [(Position x y , Empty) | x <- [1..size] , y <- [1..size]]
 
 -- Make a classic n by n empty board (Hexagonal shaped board)
 makeEmptyClassicBoard :: Integer -> Board
-makeEmptyClassicBoard size = Board $ Map.fromList [(Position x y , Empty) | x <- [1..size] , y <- [1..size] , abs (x-y) <= size `div` 2]
+makeEmptyClassicBoard size = Board $ AssocMap.fromList [(Position x y , Empty) | x <- [1..size] , y <- [1..size] , abs (x-y) <= size `div` 2]
 
 -- Make a modified classic n by n board by passing modifications (deletions and insertions) as a second argument
 makeClassicBoard :: Integer -> [Either Position Block] -> Board
 makeClassicBoard size modifications = Board $ foldr modifyBoard board modifications
     where
         (Board board) = makeEmptyClassicBoard size
-        modifyBoard (Left   position)   = Map.delete position
-        modifyBoard (Right (pos,hex))   = Map.insert pos hex
+        modifyBoard (Left   position)   = AssocMap.delete position
+        modifyBoard (Right (pos,hex))   = AssocMap.insert pos hex
 
 -- Make a classic n by n board, with the starting positions filled with player units, and can be modified (Only by deletions)
 makeStartingBoard :: Integer -> [Position] -> Board

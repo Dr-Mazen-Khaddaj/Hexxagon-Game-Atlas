@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
 
 module  DataTypes   ( Player            (..)
                     , Hexagon           (..)
@@ -14,10 +15,10 @@ module  DataTypes   ( Player            (..)
                     ) where
 
 import  PlutusLedgerApi.V2  (CurrencySymbol, TokenName, POSIXTime)
-import  Data.Maybe          (fromJust)
-import  Data.Map            qualified as Map
 import  PlutusTx.IsData     qualified as PlutusTx
 import  PlutusTx.AssocMap   qualified as AssocMap
+import  PlutusTx.Prelude    qualified as PlutusTx
+import  PlutusTx.Show       qualified as PlutusTx
 
 ------------------------------------------------------ | Data Types | ------------------------------------------------------
 --  Player
@@ -33,21 +34,27 @@ data    Hexagon         = Empty
                         deriving stock Eq
 PlutusTx.makeIsDataIndexed ''Hexagon [('Empty, 0),('Red, 1),('Blue, 2)]
 
+instance PlutusTx.Eq Hexagon where  Empty == Empty  = True
+                                    Red   == Red    = True
+                                    Blue  == Blue   = True
+                                    _     == _      = False
+
 data    Position        = Position  { getX :: Integer
                                     , getY :: Integer
                                     }
                         deriving stock (Show, Ord, Eq)
+                        deriving anyclass PlutusTx.Show
 PlutusTx.makeIsDataIndexed ''Position [('Position,0)]
+
+instance PlutusTx.Eq Position where (Position x1 y1) == (Position x2 y2) = x1 == x2 && y1 == y2
 
 type    Block           = (Position,Hexagon)
 
-instance PlutusTx.ToData (Map.Map Position Hexagon) where toBuiltinData = PlutusTx.toBuiltinData . AssocMap.fromList . Map.toList
-instance PlutusTx.FromData (Map.Map Position Hexagon) where fromBuiltinData = (Map.fromList . AssocMap.toList <$>) . PlutusTx.fromBuiltinData
-instance PlutusTx.UnsafeFromData (Map.Map Position Hexagon) where unsafeFromBuiltinData = fromJust . PlutusTx.fromBuiltinData
-
-newtype Board           = Board (Map.Map Position Hexagon)
-                        deriving newtype Eq
+newtype Board           = Board (AssocMap.Map Position Hexagon)
+                        deriving stock Eq
 PlutusTx.makeIsDataIndexed ''Board [('Board, 0)]
+
+instance PlutusTx.Eq Board where (Board b1) == (Board b2) = b1 == b2
 
 --  Move
 data    Move            = Move      { initialPosition   :: Position
@@ -76,13 +83,13 @@ PlutusTx.makeIsDataIndexed ''GameInfo [('GameInfo,0)]
 
 data    Initialization  = Add Player
                         | Withdraw
-                        deriving (Eq, Show)
+                        deriving stock (Eq, Show)
 PlutusTx.makeIsDataIndexed ''Initialization [('Add,0),('Withdraw,1)]
 
 data    RunGame         = PlayTurn
                         | GameOver Player
                         | TimeOut
-                        deriving (Eq, Show)
+                        deriving stock (Eq, Show)
 PlutusTx.makeIsDataIndexed ''RunGame [('PlayTurn,0),('GameOver,1),('TimeOut,2)]
 
 ----------------------------------------------------------------------------------------------------------------------------

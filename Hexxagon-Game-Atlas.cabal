@@ -124,3 +124,4 @@ test-suite Hexxagon-Game-Atlas-test
                     , hedgehog-quickcheck
                     , QuickCheck
                     , text
+                    , plutus-tx

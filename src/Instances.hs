@@ -5,11 +5,11 @@ module  Instances   ( destructureBoard, showBoard
                     , BoardMode         (..)
                     ) where
 
-import  DataTypes       ( Board(..), Position(..), Hexagon(..), Block )
-import  Data.Ord        ( Down(Down) )
-import  Data.Function   ( on )
-import  Data.List       qualified as List
-import  Data.Map        qualified as Map
+import  DataTypes           ( Board(..), Position(..), Hexagon(..), Block )
+import  Data.Ord            ( Down(Down) )
+import  Data.Function       ( on )
+import  Data.List           qualified as List
+import  PlutusTx.AssocMap   qualified as AssocMap
 
 ---------------------------------------------------- | Show Instance | -----------------------------------------------------
 -- Show Hexxagon
@@ -124,6 +124,6 @@ showOrganizedBoard orientation mode = case orientation of
 -------------------------------------------------- | Utility Functions | ---------------------------------------------------
 
 destructureBoard :: Board -> [Block]
-destructureBoard (Board boardMap) = Map.toList boardMap
+destructureBoard (Board boardMap) = AssocMap.toList boardMap
 
 ----------------------------------------------------------------------------------------------------------------------------
