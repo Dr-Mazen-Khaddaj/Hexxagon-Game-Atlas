@@ -11,7 +11,7 @@ import qualified Data.Map as Map
 
 ----------------------------------------------------------------------------------------------------------------------------
 -- Calculate distance of a move
-distance :: Move -> Int
+distance :: Move -> Integer
 distance m = (`div` 2) $ abs deltaX + abs deltaY + abs (deltaX - deltaY)
     where
         Position xi yi = m.initialPosition
@@ -20,7 +20,7 @@ distance m = (`div` 2) $ abs deltaX + abs deltaY + abs (deltaX - deltaY)
         deltaY = yf - yi
 
 -- Get nearby positions of a specific hexagon type
-getNearbyPositions :: Board -> Position -> Hexagon -> Int -> [Position]
+getNearbyPositions :: Board -> Position -> Hexagon -> Integer -> [Position]
 getNearbyPositions (Board board) pos hex d = filter rightHex $ calculateNearbyPositions pos d
     where
         rightHex p = case Map.lookup p board of
@@ -28,10 +28,10 @@ getNearbyPositions (Board board) pos hex d = filter rightHex $ calculateNearbyPo
             Nothing -> False
 
 -- Calculate All possible nearby positions, given a starting position, and distance
-calculateNearbyPositions :: Position -> Int -> [Position]
+calculateNearbyPositions :: Position -> Integer -> [Position]
 calculateNearbyPositions (Position x y) d = [ Position (x + deltaX) (y + deltaY) | (deltaX, deltaY) <- calculateDeltas d]
     where
-        calculateDeltas :: Int -> [(Int,Int)]
+        calculateDeltas :: Integer -> [(Integer,Integer)]
         calculateDeltas n = concat [s1,s2,s3,s4,s5,s6]
             where
                 s1 = (n,) <$> [0..n]
@@ -44,15 +44,15 @@ calculateNearbyPositions (Position x y) d = [ Position (x + deltaX) (y + deltaY)
 ---------------------------------------------- | Board Generation Functions | ----------------------------------------------
 
 -- Make a simple n by n sized empty board
-makeEmptyBoard :: Int -> Board
+makeEmptyBoard :: Integer -> Board
 makeEmptyBoard size = Board $ Map.fromList [(Position x y , Empty) | x <- [1..size] , y <- [1..size]]
 
 -- Make a classic n by n empty board (Hexagonal shaped board)
-makeEmptyClassicBoard :: Int -> Board
+makeEmptyClassicBoard :: Integer -> Board
 makeEmptyClassicBoard size = Board $ Map.fromList [(Position x y , Empty) | x <- [1..size] , y <- [1..size] , abs (x-y) <= size `div` 2]
 
 -- Make a modified classic n by n board by passing modifications (deletions and insertions) as a second argument
-makeClassicBoard :: Int -> [Either Position Block] -> Board
+makeClassicBoard :: Integer -> [Either Position Block] -> Board
 makeClassicBoard size modifications = Board $ foldr modifyBoard board modifications
     where
         (Board board) = makeEmptyClassicBoard size
@@ -60,7 +60,7 @@ makeClassicBoard size modifications = Board $ foldr modifyBoard board modificati
         modifyBoard (Right (pos,hex))   = Map.insert pos hex
 
 -- Make a classic n by n board, with the starting positions filled with player units, and can be modified (Only by deletions)
-makeStartingBoard :: Int -> [Position] -> Board
+makeStartingBoard :: Integer -> [Position] -> Board
 makeStartingBoard size = makeClassicBoard size . (insertions <>) . (Left <$>)
     where
         insertions = Right <$> blueBlocks <> redBlocks

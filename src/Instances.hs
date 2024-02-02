@@ -43,7 +43,7 @@ organizeBoard Vertex = (organizeLine <$>) . fillBoard . groupBoard . sortBoard .
         groupBoard = List.groupBy ((==) `on` getY . fst)
         sortBoard = List.sortOn (Down . getY . fst)
         fillBoard (xH:xs@(xL:_)) = xH : gap <> fillBoard xs
-            where   getLevel = getY . fst . head
+            where   getLevel = fromInteger . getY . fst . head
                     gap = replicate (getLevel xH - getLevel xL - 1) []
         fillBoard list = list
 
