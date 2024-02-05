@@ -7,6 +7,7 @@ module  UtilityFxs  ( distance
                     ) where
 
 import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block)
+import  Instances           ()
 import  PlutusTx.AssocMap   qualified as AssocMap
 
 ----------------------------------------------------------------------------------------------------------------------------

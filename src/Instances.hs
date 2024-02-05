@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module  Instances   ( destructureBoard, showBoard
@@ -5,11 +6,15 @@ module  Instances   ( destructureBoard, showBoard
                     , BoardMode         (..)
                     ) where
 
-import  DataTypes           ( Board(..), Position(..), Hexagon(..), Block )
-import  Data.Ord            ( Down(Down) )
-import  Data.Function       ( on )
-import  Data.List           qualified as List
-import  PlutusTx.AssocMap   qualified as AssocMap
+import  DataTypes
+import  Data.Ord                ( Down(Down) )
+import  Data.Function           ( on )
+import  Data.List               qualified as List
+import  PlutusTx.Builtins.Class (stringToBuiltinString)
+import  PlutusTx.IsData         qualified as PlutusTx
+import  PlutusTx.Prelude        qualified as PlutusTx
+import  PlutusTx.Show           qualified as PlutusTx
+import  PlutusTx.AssocMap       qualified as AssocMap
 
 ---------------------------------------------------- | Show Instance | -----------------------------------------------------
 -- Show Hexxagon
@@ -121,9 +126,60 @@ showOrganizedBoard orientation mode = case orientation of
                 appendLine cs [] = cs
         concatLines ls = concat $ concat ls
 
+instance Show GameSettings where show gameSettings = "Settings {" <> show gameSettings.getPlayer1
+                                                    <>  " , "     <> show gameSettings.getTurnDuration
+                                                    <>  " , "     <> show gameSettings.getBoardS0
+                                                    <>  " }"
+instance Show GameState where show gameState = "Game {" <> show gameState.getPlayer'sTurn
+                                            <>  " , "   <> show gameState.getDeadline
+                                            <>  " , "   <> show gameState.getBoard
+                                            <>  " }"
+instance Show GameInfo where show gameInfo = "GameInfo {" <> show gameInfo.getPlayers
+                                            <>  " , "     <> show gameInfo.getTurnDuration'
+                                            <>  " , "     <> show gameInfo.getGameState
+                                            <>  " }"
+
 -------------------------------------------------- | Utility Functions | ---------------------------------------------------
 
 destructureBoard :: Board -> [Block]
 destructureBoard (Board boardMap) = AssocMap.toList boardMap
+
+-------------------------------------------------- | PlutusTx Instances | --------------------------------------------------
+
+-- Generate a FromData and a ToData instance
+PlutusTx.makeIsDataIndexed ''Player [('RedPlayer, 0),('BluePlayer, 1)]
+PlutusTx.makeIsDataIndexed ''Hexagon [('Empty, 0),('Red, 1),('Blue, 2)]
+PlutusTx.makeIsDataIndexed ''Position [('Position,0)]
+PlutusTx.makeIsDataIndexed ''Board [('Board, 0)]
+PlutusTx.makeIsDataIndexed ''Move [('Move,0)]
+PlutusTx.makeIsDataIndexed ''GameSettings [('Settings,0)]
+PlutusTx.makeIsDataIndexed ''GameState [('Game,0)]
+PlutusTx.makeIsDataIndexed ''GameInfo [('GameInfo,0)]
+PlutusTx.makeIsDataIndexed ''Initialization [('Add,0),('Withdraw,1)]
+PlutusTx.makeIsDataIndexed ''RunGame [('PlayTurn,0),('GameOver,1),('TimeOut,2)]
+
+-- PlutusTx.Eq instance
+instance PlutusTx.Eq Player         where (==) = (==)
+instance PlutusTx.Eq Hexagon        where (==) = (==)
+instance PlutusTx.Eq Position       where (==) = (==)
+instance PlutusTx.Eq Move           where (==) = (==)
+instance PlutusTx.Eq Board          where (==) = (==)
+instance PlutusTx.Eq Initialization where (==) = (==)
+instance PlutusTx.Eq GameSettings   where (==) = (==)
+instance PlutusTx.Eq GameState      where (==) = (==)
+instance PlutusTx.Eq GameInfo       where (==) = (==)
+instance PlutusTx.Eq RunGame        where (==) = (==)
+
+-- PlutusTx.Show instance
+instance PlutusTx.Show Player           where show = stringToBuiltinString . show
+instance PlutusTx.Show Hexagon          where show = stringToBuiltinString . show
+instance PlutusTx.Show Position         where show = stringToBuiltinString . show
+instance PlutusTx.Show Move             where show = stringToBuiltinString . show
+instance PlutusTx.Show Board            where show = stringToBuiltinString . show
+instance PlutusTx.Show Initialization   where show = stringToBuiltinString . show
+instance PlutusTx.Show GameSettings     where show = stringToBuiltinString . show
+instance PlutusTx.Show GameState        where show = stringToBuiltinString . show
+instance PlutusTx.Show GameInfo         where show = stringToBuiltinString . show
+instance PlutusTx.Show RunGame          where show = stringToBuiltinString . show
 
 ----------------------------------------------------------------------------------------------------------------------------

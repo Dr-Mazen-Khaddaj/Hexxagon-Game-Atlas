@@ -1,13 +1,13 @@
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 module Main (main) where
-import Test.QuickCheck (generate)
-import DataTypes (Hexagon (..), Position (..), Board (Board))
-import Arbitrary ( arbitrary )
-import Data.Char (chr)
+
+import Test.QuickCheck (generate, Arbitrary (arbitrary))
+import DataTypes
+import Arbitrary ()
 import qualified PlutusTx.AssocMap as AssocMap
-import UtilityFxs (makeEmptyBoard, makeEmptyClassicBoard, makeStartingBoard, getNearbyPositions)
-import Variables (classicBoard_S9DC3)
+import UtilityFxs (makeEmptyBoard, makeEmptyClassicBoard, makeStartingBoard)
+import Constants (classicBoard_S9DC3)
 import Instances (Orientation(..), BoardMode (..), showBoard)
+import Test_Instances (testAllInstances)
 
 main :: IO ()
 main = do
@@ -21,6 +21,14 @@ main = do
     print (length $ AssocMap.keys mapBoard)
     print classicBoard_S9DC3
     putStrLn $ showBoard Edge OnlyHexagons classicBoard_S9DC3
-    print $ classicBoard_S9DC3 == classicBoard_S9DC3
-    print $ Position 5 4
-    print $ Position 5 5 == Position 5 3
+    testAllInstances
+
+-- Testing
+-- runTestArbitrary :: IO ()
+-- runTestArbitrary = do
+--     undefined
+    -- sample $ arbitrary @Value
+    -- sample $ encode . fromBuiltin <$> genHash
+    -- sample $ encode . fromBuiltin <$> genSizedBuiltinByteString 28
+    -- sample $ (\tn@(TokenName bs) -> (tn, encode $ fromBuiltin bs)) <$> arbitrary @TokenName
+
