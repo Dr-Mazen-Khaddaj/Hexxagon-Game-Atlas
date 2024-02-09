@@ -111,7 +111,9 @@ test-suite Hexxagon-Game-Atlas-test
                     , Arbitrary.DataTypes
                     , Arbitrary.Generators
                     , Arbitrary.PlutusTx
+                    , Test_Arbitrary
                     , Test_Instances
+                    , Test_UtilityFxs
     -- other-extensions:
     ghc-options: -threaded -rtsopts
     build-depends:    base

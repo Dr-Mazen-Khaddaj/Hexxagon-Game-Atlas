@@ -1,5 +1,6 @@
 module  UtilityFxs  ( distance
                     , getNearbyPositions
+                    , calculateNearbyPositions
                     , makeEmptyBoard
                     , makeEmptyClassicBoard
                     , makeClassicBoard
