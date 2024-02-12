@@ -110,7 +110,7 @@ test-suite Hexxagon-Game-Atlas-test
     other-modules:    Arbitrary
                     , Arbitrary.DataTypes
                     , Arbitrary.Generators
-                    , Arbitrary.PlutusTx
+                    , Arbitrary.PlutusDT
                     , Test_Arbitrary
                     , Test_Instances
                     , Test_UtilityFxs

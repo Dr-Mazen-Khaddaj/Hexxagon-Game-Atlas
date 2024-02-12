@@ -3,7 +3,7 @@
 module Arbitrary.DataTypes where
 
 import  DataTypes
-import  Arbitrary.PlutusTx  ()
+import  Arbitrary.PlutusDT  ()
 import  PlutusTx.AssocMap   qualified as AssocMap
 import  Data.Map            qualified as Map
 import  Test.QuickCheck     (Arbitrary (arbitrary), oneof, suchThat, vectorOf, Gen, chooseInt)

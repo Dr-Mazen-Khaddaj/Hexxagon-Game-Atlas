@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module  Arbitrary.PlutusTx  ( genHash
+module  Arbitrary.PlutusDT  ( genHash
                             , genListOf
                             , genListOf1
                             , assortValue

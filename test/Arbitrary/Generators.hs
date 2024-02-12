@@ -36,7 +36,7 @@ import  Data.Map                    qualified as Map
 import  Data.Function               ( on )
 import  Test.QuickCheck             ( Gen, Arbitrary (arbitrary), oneof, chooseInt, sample, suchThat, vectorOf, choose, resize, chooseInteger )
 import  Constants                   ( thousand )
-import  Arbitrary.PlutusTx          ( genListOf, assortValue )
+import  Arbitrary.PlutusDT          ( genListOf, assortValue )
 
 ------------------------------------------------------ | Generators | ------------------------------------------------------
 
