@@ -63,7 +63,7 @@ data    Initialization  = Add Player
                         | Withdraw
                         deriving stock (Eq, Show)
 
-data    RunGame         = PlayTurn
+data    RunGame         = PlayTurn Move
                         | GameOver Player
                         | TimeOut
                         deriving stock (Eq, Show)
