@@ -74,6 +74,9 @@ library
                     , serialise
                     , hex
 
+                    , haskeline
+                    , time
+
 executable Hexxagon-Game-Atlas
     import:           common
     hs-source-dirs:   app
