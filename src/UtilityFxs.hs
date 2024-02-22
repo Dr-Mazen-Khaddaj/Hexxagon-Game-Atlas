@@ -5,6 +5,7 @@ module  UtilityFxs  ( distance
                     , makeEmptyClassicBoard
                     , makeClassicBoard
                     , makeStartingBoard
+                    , makeMove
                     ) where
 
 import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block)
@@ -12,6 +13,26 @@ import  Instances           ()
 import  PlutusTx.AssocMap   qualified as AssocMap
 
 ----------------------------------------------------------------------------------------------------------------------------
+
+-- Make Move
+makeMove :: Move -> Board -> Board
+makeMove move@(Move iPos fPos) (Board iBoard) = case d of
+    1 -> Board fBoard
+    2 -> Board $ AssocMap.insert iPos Empty fBoard
+    _ -> error $ "Illegal distance (d = " <> show d <> ")! @makeMove"
+    where
+        d = distance move
+        iHex = case AssocMap.lookup iPos iBoard of
+            Just h -> h
+            Nothing -> error "Initial Position does not exist! @makeMove"
+        oppositeHex = case iHex of
+            Red -> Blue
+            Blue -> Red
+            Empty -> error "Initial hexagon is Empty! @makeMove"
+        hexagonsToFlip = fPos : getNearbyPositions (Board iBoard) fPos oppositeHex 1
+        fBoard = foldr insertNewHex iBoard hexagonsToFlip
+        insertNewHex pos = AssocMap.insert pos iHex
+
 -- Calculate distance of a move
 distance :: Move -> Integer
 distance m = (`div` 2) $ abs deltaX + abs deltaY + abs (deltaX - deltaY)

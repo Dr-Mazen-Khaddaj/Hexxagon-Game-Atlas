@@ -14,6 +14,23 @@ import qualified PlutusTx.AssocMap as AssocMap
 import Data.Maybe (fromJust)
 import Constants (classicBoard_S9DC3)
 import Test_Instances (printPassOrFail, printUnderlined)
+import Control.Exception (try, ErrorCall (ErrorCallWithLocation), evaluate)
+
+testMakeMove :: IO ()
+testMakeMove = do
+    let move1  = Move (Position 1 1) (Position 2 2)
+    let move2a = Move (Position 1 1) (Position 1 3)
+    let move2b = Move (Position 1 3) (Position 2 5)
+    let move3  = Move (Position 1 1) (Position 4 4)
+    let move4  = Move (Position 1 6) (Position 2 6)
+    let move5  = Move (Position 2 1) (Position 2 2)
+    print $ makeMove move1 classicBoard_S9DC3
+    print $ makeMove move2a classicBoard_S9DC3
+    print $ foldr makeMove classicBoard_S9DC3 [move2b, move2a]
+    Left (ErrorCallWithLocation e1 _) <- try @ErrorCall (evaluate $ makeMove move3 classicBoard_S9DC3)
+    Left (ErrorCallWithLocation e2 _) <- try @ErrorCall (evaluate $ makeMove move4 classicBoard_S9DC3)
+    Left (ErrorCallWithLocation e3 _) <- try @ErrorCall (evaluate $ makeMove move5 classicBoard_S9DC3)
+    mapM_ print [e1,e2,e3]
 
 testMakeBoard :: Integer -> IO ()
 testMakeBoard n = do

@@ -2,7 +2,7 @@ module Main (main) where
 
 import Arbitrary        ()
 import Test_Instances   (testAllInstances)
-import Test_UtilityFxs  (testAllUtilityFxsSample, testMakeBoard)
+import Test_UtilityFxs  (testAllUtilityFxsSample, testMakeBoard, testMakeMove)
 import Test_Arbitrary   (testArbitraryDataTypes)
 import System.IO        (hSetEncoding, stdout, stderr, utf8)
 
@@ -15,4 +15,5 @@ main = do
     testMakeBoard 5
     testAllUtilityFxsSample
     testAllInstances False
+    testMakeMove
     -- testAllUtilityFxsManual
