@@ -146,17 +146,19 @@ destructureBoard (Board boardMap) = AssocMap.toList boardMap
 
 -------------------------------------------------- | PlutusTx Instances | --------------------------------------------------
 
--- Generate a FromData and a ToData instance
-PlutusTx.makeIsDataIndexed ''Player [('RedPlayer, 0),('BluePlayer, 1)]
-PlutusTx.makeIsDataIndexed ''Hexagon [('Empty, 0),('Red, 1),('Blue, 2)]
-PlutusTx.makeIsDataIndexed ''Position [('Position,0)]
-PlutusTx.makeIsDataIndexed ''Board [('Board, 0)]
-PlutusTx.makeIsDataIndexed ''Move [('Move,0)]
-PlutusTx.makeIsDataIndexed ''GameSettings [('Settings,0)]
-PlutusTx.makeIsDataIndexed ''GameState [('Game,0)]
-PlutusTx.makeIsDataIndexed ''GameInfo [('GameInfo,0)]
+-- PlutusTx.ToData , PlutusTx.FromData , PlutusTx.UnsafeFromData
+PlutusTx.makeIsDataIndexed ''Player         [('RedPlayer, 0),('BluePlayer, 1)]
+PlutusTx.makeIsDataIndexed ''Hexagon        [('Empty, 0),('Red, 1),('Blue, 2)]
+PlutusTx.makeIsDataIndexed ''Position       [('Position,0)]
+instance PlutusTx.ToData Board              where toBuiltinData (Board a) = PlutusTx.toBuiltinData a
+instance PlutusTx.FromData Board            where fromBuiltinData = (Board <$>) . PlutusTx.fromBuiltinData
+instance PlutusTx.UnsafeFromData Board      where unsafeFromBuiltinData = Board . PlutusTx.unsafeFromBuiltinData
+PlutusTx.makeIsDataIndexed ''Move           [('Move,0)]
+PlutusTx.makeIsDataIndexed ''GameSettings   [('Settings,0)]
+PlutusTx.makeIsDataIndexed ''GameState      [('Game,0)]
+PlutusTx.makeIsDataIndexed ''GameInfo       [('GameInfo,0)]
 PlutusTx.makeIsDataIndexed ''Initialization [('Add,0),('Withdraw,1)]
-PlutusTx.makeIsDataIndexed ''RunGame [('PlayTurn,0),('GameOver,1),('TimeOut,2)]
+PlutusTx.makeIsDataIndexed ''RunGame        [('PlayTurn,0),('GameOver,1),('TimeOut,2)]
 
 -- PlutusTx.Eq instance
 instance PlutusTx.Eq Player         where (==) = (==)
