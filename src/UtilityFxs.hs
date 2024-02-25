@@ -6,6 +6,7 @@ module  UtilityFxs  ( distance
                     , makeClassicBoard
                     , makeStartingBoard
                     , makeMove
+                    , unsafeMakeMove
                     ) where
 
 import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block)
@@ -29,6 +30,20 @@ makeMove move@(Move iPos fPos) (Board iBoard) = case d of
             Red -> Blue
             Blue -> Red
             Empty -> error "Initial hexagon is Empty! @makeMove"
+        hexagonsToFlip = fPos : getNearbyPositions (Board iBoard) fPos oppositeHex 1
+        fBoard = foldr insertNewHex iBoard hexagonsToFlip
+        insertNewHex pos = AssocMap.insert pos iHex
+
+unsafeMakeMove :: Hexagon -> Move -> Board -> Board
+unsafeMakeMove iHex move@(Move iPos fPos) (Board iBoard) = case d of
+    1 -> Board fBoard
+    _ -> Board $ AssocMap.insert iPos Empty fBoard
+    where
+        d = distance move
+        oppositeHex = case iHex of
+            Red -> Blue
+            Blue -> Red
+            Empty -> error "Initial hexagon is Empty! @unsafeMakeMove"
         hexagonsToFlip = fPos : getNearbyPositions (Board iBoard) fPos oppositeHex 1
         fBoard = foldr insertNewHex iBoard hexagonsToFlip
         insertNewHex pos = AssocMap.insert pos iHex
