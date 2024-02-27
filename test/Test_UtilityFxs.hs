@@ -4,7 +4,7 @@ module Test_UtilityFxs where
 
 import UtilityFxs
 import Test.QuickCheck (generate, Arbitrary (arbitrary))
-import DataTypes (Board (Board), Move (Move), Position (Position), Hexagon (..), Block)
+import DataTypes (Board (Board), Move (Move), Position (Position), Hexagon (..), Block, Player (BluePlayer, RedPlayer), GameInfo (GameInfo), GameState (Game))
 import qualified Text.Read as Text
 import Arbitrary ()
 import System.IO (hFlush, stdout)
@@ -15,6 +15,17 @@ import Data.Maybe (fromJust)
 import Constants (classicBoard_S9DC3)
 import Test_Instances (printPassOrFail, printUnderlined)
 import Control.Exception (try, ErrorCall (ErrorCallWithLocation), evaluate)
+import PlutusLedgerApi.V2 (POSIXTime(POSIXTime))
+
+testBotPlayGame :: IO ()
+testBotPlayGame = do
+    board   <- generate $ makeStartingBoard 20 <$> arbitrary
+    playerA <- generate $ BluePlayer <$> arbitrary <*> arbitrary
+    playerB <- generate $ RedPlayer  <$> arbitrary <*> arbitrary
+    let turnDuration = POSIXTime 1
+        deadline = POSIXTime 0
+        gameInfo = GameInfo [playerA, playerB] turnDuration (Game playerA deadline board)
+    mapM_ print [gameInfo,botPlayGame gameInfo]
 
 testMakeMove :: IO ()
 testMakeMove = do

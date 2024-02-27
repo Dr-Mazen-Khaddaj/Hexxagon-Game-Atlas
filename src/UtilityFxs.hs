@@ -7,13 +7,39 @@ module  UtilityFxs  ( distance
                     , makeStartingBoard
                     , makeMove
                     , unsafeMakeMove
+                    , searchForPossibleMove
+                    , botPlayGame
                     ) where
 
-import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block)
+import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block, GameInfo (GameInfo), GameState (Game), Player (..))
 import  Instances           ()
 import  PlutusTx.AssocMap   qualified as AssocMap
+import  Data.List           qualified as List
 
 ----------------------------------------------------------------------------------------------------------------------------
+
+botPlayGame :: GameInfo -> GameInfo
+botPlayGame gameInfo@(GameInfo players turnDuration (Game player'sTurn deadline board)) =
+    case searchForPossibleMove player'sHex 1 board of
+        Just move -> botPlayGame $ newGameInfo move
+        Nothing -> case searchForPossibleMove player'sHex 2 board of
+                        Just move -> botPlayGame $ newGameInfo move
+                        Nothing -> gameInfo
+    where
+        newGameInfo = GameInfo players turnDuration . Game nextPlayer newDeadline . flip makeMove board
+        newDeadline = deadline + turnDuration
+        player'sHex = case player'sTurn of RedPlayer _ _ -> Red ; BluePlayer _ _ -> Blue
+        nextPlayer  = case List.delete player'sTurn players of [p] -> p ; _ -> error "@botPlayGame"
+
+searchForPossibleMove :: Hexagon -> Integer -> Board -> Maybe Move
+searchForPossibleMove hexagon d board@(Board boardMap) = searchList $ AssocMap.toList boardMap
+    where
+        searchList ((iPos,iHex):xs)
+            | iHex == hexagon = case getNearbyPositions board iPos Empty d of
+                                    (fPos:_) -> Just $ Move iPos fPos
+                                    [] -> searchList xs
+            | otherwise = searchList xs
+        searchList [] = Nothing
 
 -- Make Move
 makeMove :: Move -> Board -> Board
