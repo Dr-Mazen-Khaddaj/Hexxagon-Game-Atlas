@@ -51,11 +51,20 @@ library
     exposed-modules:  DataTypes
                     , Instances
                     , UtilityFxs
+                    , GYUtilities
+                    , IOUtilities
                     , MainFxs
                     , IOFxs
                     , Constants
-    -- other-modules:
-    -- other-extensions:
+                    , Scripts
+
+                    , Actions.CreateGame
+                    , Actions.CancelGame
+                    , Actions.StartGame
+                    , Actions.PlayGame
+                    , Actions.GameOver
+                    , Actions.TimeOut
+
     build-depends:    base
                     , aeson
                     , atlas-cardano
@@ -76,22 +85,26 @@ library
 
                     , haskeline
                     , time
+                    , directory
+                    , filepath
 
 executable Hexxagon-Game-Atlas
     import:           common
     hs-source-dirs:   app
     main-is:          Main.hs
-    -- other-modules:
+    other-modules:    GameConfig
     -- other-extensions:
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
     build-depends:    base
                     , atlas-cardano
                     , Hexxagon-Game-Atlas
+                    , directory
+                    , filepath
 
 executable Hexxagon-Game-Server
     import:           common
     hs-source-dirs:   server
-    main-is:          server-main.hs
+    main-is:          Main.hs
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
     build-depends:    base
                     , Hexxagon-Game-Atlas
