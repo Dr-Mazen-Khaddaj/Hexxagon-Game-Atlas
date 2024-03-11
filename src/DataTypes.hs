@@ -65,6 +65,7 @@ data    Initialization  = Add Player
 
 data    RunGame         = PlayTurn Move
                         | GameOver Player
+                        | Draw
                         | TimeOut
                         deriving stock (Eq, Show)
 

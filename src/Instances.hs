@@ -158,7 +158,7 @@ PlutusTx.makeIsDataIndexed ''GameSettings   [('Settings,0)]
 PlutusTx.makeIsDataIndexed ''GameState      [('Game,0)]
 PlutusTx.makeIsDataIndexed ''GameInfo       [('GameInfo,0)]
 PlutusTx.makeIsDataIndexed ''Initialization [('Add,0),('Withdraw,1)]
-PlutusTx.makeIsDataIndexed ''RunGame        [('PlayTurn,0),('GameOver,1),('TimeOut,2)]
+PlutusTx.makeIsDataIndexed ''RunGame        [('PlayTurn,0),('GameOver,1),('Draw,2),('TimeOut,3)]
 
 -- PlutusTx.Eq instance
 instance PlutusTx.Eq Player         where (==) = (==)

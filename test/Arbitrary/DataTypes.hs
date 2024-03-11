@@ -17,7 +17,7 @@ instance Arbitrary GameSettings     where arbitrary = Settings <$> arbitrary <*>
 instance Arbitrary GameState        where arbitrary = Game <$> arbitrary <*> arbitrary <*> arbitrary
 instance Arbitrary GameInfo         where arbitrary = GameInfo <$> arbitrary <*> arbitrary <*> arbitrary
 instance Arbitrary Initialization   where arbitrary = oneof [Add <$> arbitrary , pure Withdraw]
-instance Arbitrary RunGame          where arbitrary = oneof [PlayTurn <$> arbitrary , GameOver <$> arbitrary , pure TimeOut]
+instance Arbitrary RunGame          where arbitrary = oneof [PlayTurn <$> arbitrary , GameOver <$> arbitrary , pure Draw , pure TimeOut]
 
 genListOf100 :: Int -> Gen a -> Gen [a]
 genListOf100 n g = chooseInt (10, n) >>= flip vectorOf g
