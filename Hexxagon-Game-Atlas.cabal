@@ -48,6 +48,7 @@ common plutus-ghc-options
 library
     import:           common
     hs-source-dirs:   src
+                    , Extras
     exposed-modules:  DataTypes
                     , Instances
                     , UtilityFxs
@@ -64,6 +65,10 @@ library
                     , Actions.PlayGame
                     , Actions.GameOver
                     , Actions.TimeOut
+                    , Actions.MintPlayerNFT
+
+                    , Extras
+                    , FlatInstance
 
     build-depends:    base
                     , aeson
@@ -75,12 +80,17 @@ library
                     , text
 
                     , bytestring
+                    , base16-bytestring
                     , cardano-api
                     , data-default
                     , plutus-ledger-api
                     , plutus-tx-plugin
                     , plutus-tx
+                    , plutus-core
+                    , flat
+                    , cborg
                     , serialise
+                    , deepseq
                     , hex
 
                     , haskeline
@@ -100,6 +110,7 @@ executable Hexxagon-Game-Atlas
                     , Hexxagon-Game-Atlas
                     , directory
                     , filepath
+                    , mtl
 
 executable Hexxagon-Game-Server
     import:           common

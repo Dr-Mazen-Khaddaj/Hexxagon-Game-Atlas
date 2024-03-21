@@ -15,6 +15,8 @@ import  PlutusTx.IsData         qualified as PlutusTx
 import  PlutusTx.Prelude        qualified as PlutusTx
 import  PlutusTx.Show           qualified as PlutusTx
 import  PlutusTx.AssocMap       qualified as AssocMap
+import PlutusCore.Data (Data)
+import PlutusLedgerApi.V2 (BuiltinData(..))
 
 ---------------------------------------------------- | Show Instance | -----------------------------------------------------
 -- Show Hexxagon
@@ -147,6 +149,9 @@ destructureBoard (Board boardMap) = AssocMap.toList boardMap
 -------------------------------------------------- | PlutusTx Instances | --------------------------------------------------
 
 -- PlutusTx.ToData , PlutusTx.FromData , PlutusTx.UnsafeFromData
+instance PlutusTx.ToData Data              where toBuiltinData = BuiltinData
+instance PlutusTx.FromData Data            where fromBuiltinData (BuiltinData d) = Just d
+instance PlutusTx.UnsafeFromData Data      where unsafeFromBuiltinData (BuiltinData d) = d
 PlutusTx.makeIsDataIndexed ''Player         [('RedPlayer, 0),('BluePlayer, 1)]
 PlutusTx.makeIsDataIndexed ''Hexagon        [('Empty, 0),('Red, 1),('Blue, 2)]
 PlutusTx.makeIsDataIndexed ''Position       [('Position,0)]
@@ -159,6 +164,7 @@ PlutusTx.makeIsDataIndexed ''GameState      [('Game,0)]
 PlutusTx.makeIsDataIndexed ''GameInfo       [('GameInfo,0)]
 PlutusTx.makeIsDataIndexed ''Initialization [('Add,0),('Withdraw,1)]
 PlutusTx.makeIsDataIndexed ''RunGame        [('PlayTurn,0),('GameOver,1),('Draw,2),('TimeOut,3)]
+PlutusTx.makeIsDataIndexed ''Metadata       [('Metadata,0)]
 
 -- PlutusTx.Eq instance
 instance PlutusTx.Eq Player         where (==) = (==)

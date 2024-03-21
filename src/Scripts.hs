@@ -1,21 +1,28 @@
 module Scripts  ( initialiseGameSC
                 , runGameSC
+                , refNFTManagerSC
                 , gyScriptToValidator
                 , gyScriptToAddress
+                , playerIdentifierMP
                 ) where
 
 import GeniusYield.Types
-import PlutusLedgerApi.V2   ( Credential (..), Address (..) )
+import PlutusLedgerApi.V2   ( Credential (..), Address (..), Data, toData )
 import Data.Aeson           ( Value (..), decode )
 import Data.Aeson.KeyMap    ( toList )
 import Data.Maybe           ( fromMaybe )
+import Extras               ( applyArguments, fromCardanoPlutusScript, serializableToScript )
 import Data.ByteString.Lazy qualified as LBS
 
 ------------------------------------------------------- | Scripts | ------------------------------------------------------- |
-initialiseGameSC, runGameSC :: IO (GYScript 'PlutusV2)
+initialiseGameSC, runGameSC, refNFTManagerSC :: IO (GYScript 'PlutusV2)
 
 initialiseGameSC    = getScriptFromFile "InitialiseGameSC"
 runGameSC           = getScriptFromFile "RunGameSC"
+refNFTManagerSC     = getScriptFromFile "RefNFTManagerSC"
+
+playerIdentifierMP :: GYTxOutRef -> IO (GYMintScript 'PlutusV2)
+playerIdentifierMP = (<$> getScriptFromFile "PlayerIdentifierMP") . ((GYMintScript .) . gyScriptToMintingPolicy) . (:[]) . toData . txOutRefToPlutus
 
 --------------------------------------------------- | Helper Functions | -------------------------------------------------- |
 
@@ -34,5 +41,8 @@ getScriptFromFile name = do
             String cbor -> fromMaybe (error "Can't get Script from CBOR!") $ scriptFromCBOR cbor
             _ -> error "Value is not 'String'!"
     return script
+
+gyScriptToMintingPolicy :: [Data] -> GYScript 'PlutusV2 -> GYMintingPolicy 'PlutusV2
+gyScriptToMintingPolicy args script = mintingPolicyFromApi $ serializableToScript $ applyArguments (fromCardanoPlutusScript (scriptToApi script)) args
 
 --------------------------------------------------------------------------------------------------------------------------- |

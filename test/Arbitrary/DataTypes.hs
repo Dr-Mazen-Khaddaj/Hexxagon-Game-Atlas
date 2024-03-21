@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Arbitrary.DataTypes where

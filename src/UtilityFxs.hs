@@ -9,12 +9,16 @@ module  UtilityFxs  ( distance
                     , unsafeMakeMove
                     , searchForPossibleMove
                     , botPlayGame
+                    , bytesFromHex
+                    , bytesToHex
                     ) where
 
-import  DataTypes           (Move (..), Position (..), Board (Board), Hexagon (..), Block, GameInfo (GameInfo), GameState (Game), Player (..))
-import  Instances           ()
-import  PlutusTx.AssocMap   qualified as AssocMap
-import  Data.List           qualified as List
+import  DataTypes               (Move (..), Position (..), Board (Board), Hexagon (..), Block, GameInfo (GameInfo), GameState (Game), Player (..))
+import  Instances               ()
+import  PlutusTx.AssocMap       qualified as AssocMap
+import  Data.List               qualified as List
+import  Data.ByteString         qualified as BS
+import  Data.ByteString.Base16  qualified as BS16
 
 ----------------------------------------------------------------------------------------------------------------------------
 
@@ -104,6 +108,13 @@ calculateNearbyPositions (Position x y) d = [ Position (x + deltaX) (y + deltaY)
                 s4 = (-n,) <$> [0,-1..(-n+1)]
                 s5 = [ (i,i-n) | i <- [1..n-1]]
                 s6 = [ (i-n,i) | i <- [1..n-1]]
+
+----------------------------------------------------- | Conversions | ------------------------------------------------------
+
+bytesFromHex, bytesToHex :: BS.ByteString -> BS.ByteString
+
+bytesFromHex = either error id . BS16.decode
+bytesToHex = BS16.encode
 
 ---------------------------------------------- | Board Generation Functions | ----------------------------------------------
 

@@ -11,9 +11,10 @@ module  DataTypes   ( Player            (..)
                     , GameState         (..)
                     , GameInfo          (..)
                     , RunGame           (..)
+                    , Metadata          (..)
                     ) where
 
-import  PlutusLedgerApi.V2  (CurrencySymbol, TokenName, POSIXTime)
+import  PlutusLedgerApi.V2  (CurrencySymbol, TokenName, POSIXTime, BuiltinByteString, Data)
 import  PlutusTx.AssocMap   qualified as AssocMap
 
 ------------------------------------------------------ | Data Types | ------------------------------------------------------
@@ -68,5 +69,11 @@ data    RunGame         = PlayTurn Move
                         | Draw
                         | TimeOut
                         deriving stock (Eq, Show)
+
+-- Metadata
+data Metadata           = Metadata  { getMetadata       :: AssocMap.Map BuiltinByteString Data
+                                    , getVersionNum     :: Integer
+                                    , getExtraData      :: Data
+                                    }
 
 ----------------------------------------------------------------------------------------------------------------------------
