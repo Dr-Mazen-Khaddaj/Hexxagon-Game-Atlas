@@ -58,6 +58,7 @@ library
                     , IOFxs
                     , Constants
                     , Scripts
+                    , DAppConfig
 
                     , Actions.CreateGame
                     , Actions.CancelGame
@@ -78,6 +79,7 @@ library
                     , servant-swagger
                     , containers
                     , text
+                    , mtl
 
                     , bytestring
                     , base16-bytestring
@@ -102,7 +104,7 @@ executable Hexxagon-Game-Atlas
     import:           common
     hs-source-dirs:   app
     main-is:          Main.hs
-    other-modules:    GameConfig
+    other-modules:    GetConfig
     -- other-extensions:
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
     build-depends:    base
@@ -116,9 +118,14 @@ executable Hexxagon-Game-Server
     import:           common
     hs-source-dirs:   server
     main-is:          Main.hs
+    other-modules:    GetAddresses
+                      SignTransaction
+                      RunServer
+                      GetConfig
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
     build-depends:    base
                     , Hexxagon-Game-Atlas
+                    , base16-bytestring
                     , aeson-pretty
                     , bytestring
                     , atlas-cardano
@@ -128,6 +135,19 @@ executable Hexxagon-Game-Server
                     , wai-cors
                     , http-types
                     , warp
+                    , scotty
+                    , http-conduit
+                    , async
+                    , text
+                    , split
+                    , directory
+                    , filepath
+
+                    , plutus-ledger-api
+                    , plutus-tx-plugin
+                    , plutus-tx
+                    , plutus-core
+                    
 
 test-suite Hexxagon-Game-Atlas-test
     import:           common

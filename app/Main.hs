@@ -1,11 +1,12 @@
 module Main (main) where
 
-import Control.Monad.State      ( StateT (runStateT), get, liftIO )
+import Control.Monad.State      ( StateT (runStateT), get, liftIO, gets )
 import GeniusYield.GYConfig     ( withCfgProviders )
-import GeniusYield.Types        ( GYTxId )
+import GeniusYield.Types        ( gySubmitTx, signGYTxBody, GYPaymentSigningKey, GYTxBody, GYProviders )
 import Scripts                  ( gyScriptToAddress, initialiseGameSC, runGameSC, refNFTManagerSC )
-import GameConfig               ( Config(Config), getGameConfig )
 import IOUtilities              ( printTxID, ToColor (..), chooseIndex )
+import DAppConfig               ( Config(..), LocalConfig (..) )
+import GetConfig                ( getLocalConfig )
 import Actions.CreateGame       qualified
 import Actions.CancelGame       qualified
 import Actions.MintPlayerNFT    qualified
@@ -20,30 +21,29 @@ main = do
     refNFTManagerSC         >>= print . gyScriptToAddress
 
     welcomeScreen
-
-    config <- getGameConfig
+    LocalConfig config walletSkey <- getLocalConfig
     print config
-    i <- chooseIndex @String "Action" ["Create Game", "Cancel Game" , "Mint Player NFT"]
-    case i of
-        0 -> runStateT createGame       config >>= printTxID . fst
-        1 -> runStateT cancelGame       config >>= printTxID . fst
-        2 -> runStateT mintPlayerNFT    config >>= printTxID . fst
+    _ <- runStateT (runDApp walletSkey) config
+    pure ()
+
+runDApp :: GYPaymentSigningKey -> StateT Config IO ()
+runDApp walletSkey = do
+    coreCfg <- gets getCoreConfig
+    i <- liftIO $ chooseIndex @String "Action" ["Create Game", "Cancel Game" , "Mint Player NFT"]
+    txBody <- case i of
+        0 -> buildTxBody "CreateGame"       Actions.CreateGame.action
+        1 -> buildTxBody "CancelGame"       Actions.CancelGame.action
+        2 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
         _ -> error "Action Not available!"
+    liftIO $ withCfgProviders coreCfg (toIGreen "SubmitTx") $ signAndSubmitTx txBody walletSkey
 
-createGame :: StateT Config IO GYTxId
-createGame = do
-    Config coreCfg signingKey walletAddr identifierNFT Nothing <- get
-    liftIO $ withCfgProviders coreCfg (toIGreen "CreateGame") $ Actions.CreateGame.action coreCfg signingKey walletAddr identifierNFT
+buildTxBody :: String -> (Config -> GYProviders -> IO GYTxBody) -> StateT Config IO GYTxBody
+buildTxBody namespace action = do
+    config@(Config coreCfg _ _ _ _) <- get
+    liftIO $ withCfgProviders coreCfg (toIGreen namespace) $ action config
 
-cancelGame :: StateT Config IO GYTxId
-cancelGame = do
-    Config coreCfg signingKey walletAddr _ Nothing <- get
-    liftIO $ withCfgProviders coreCfg (toIGreen "CancelGame") $ Actions.CancelGame.action coreCfg signingKey walletAddr
-
-mintPlayerNFT :: StateT Config IO GYTxId
-mintPlayerNFT = do
-    Config coreCfg signingKey walletAddr _ Nothing <- get
-    liftIO $ withCfgProviders coreCfg (toIGreen "MintPlayerNFT") $ Actions.MintPlayerNFT.action coreCfg signingKey walletAddr
+signAndSubmitTx :: GYTxBody -> GYPaymentSigningKey -> GYProviders -> IO ()
+signAndSubmitTx txBody walletSkey providers = gySubmitTx providers (signGYTxBody txBody [walletSkey]) >>= printTxID
 
 welcomeScreen :: IO ()
 welcomeScreen = do

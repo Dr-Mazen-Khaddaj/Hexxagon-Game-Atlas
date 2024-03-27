@@ -3,28 +3,29 @@ module IOUtilities  ( chooseIndex
                     , askYesNo
                     , getLine'
                     , printTxID
+                    , printMsg
                     , ToColor(..)
                     ) where
 
-import System.Directory (listDirectory)
-import System.FilePath (takeExtension)
-import System.IO (hFlush, stdout)
-import Data.Char (toLower)
-import Text.Read (readMaybe)
-import GeniusYield.Types (GYTxId, GYLogNamespace)
-import GeniusYield.Imports (fromString, IsString)
+import System.IO            ( hFlush, stdout )
+import System.FilePath      ( takeExtension  )
+import System.Directory     ( listDirectory  )
+import Text.Read            ( readMaybe      )
+import Data.Char            ( toLower        )
+import GeniusYield.Types    ( GYTxId, GYLogNamespace )
+import GeniusYield.Imports  ( fromString, IsString   )
 
 chooseIndex :: Show a => String -> [a] -> IO Int
 chooseIndex typeName list = do
-    shortLine ; printList list ; shortLine
+    printMsg (width + 16) listStr
     putStr $ "Select " <> typeName <> " : "
     ($ 1) . (-) <$> getInt [1..(length list)]
+    where
+        width = maximum $ length . show <$> list
+        listStr = [ show i <> " - " <> e <> replicate (width - length e) ' ' | (i,show -> e) <- zip @Int [1..] list]
 
 fetchFilesWithExtension :: FilePath -> String -> IO [FilePath]
 fetchFilesWithExtension dir ext = ((dir <>) <$>) . filter ((== ext) . takeExtension) <$> listDirectory dir
-
-printList :: Show a => [a] -> IO ()
-printList = mapM_ (\(n,a)-> putStrLn $ show @Int n <> " - " <> show a) . zip [1..]
 
 getInt :: [Int] -> IO Int
 getInt range = do
@@ -44,28 +45,36 @@ askYesNo = getLine' >>= (\case  "yes" -> pure True
 
 getLine' :: IO String
 getLine' = hFlush stdout >> getLine
--- 
+
+--------------------------------------------------- | Aesthetic Tools | ---------------------------------------------------
+
 printTxID :: GYTxId -> IO ()
 printTxID txID = do
+    putStrLn $ toIGreen "Confirmed"
     putStrLn "-----------------------------------"
-    putStrLn $ "Transaction ID : " <> show txID
-    putStrLn $ "Cardanoscan    : https://preview.cardanoscan.io/transaction/" <> show txID
+    putStrLn $ "Transaction ID : " <> toIYellow (show txID)
+    putStrLn $ "Cardanoscan    : " <> toICyan ("https://preview.cardanoscan.io/transaction/" <> show txID)
     putStrLn "============================================================================================================================="
-
----------------------
--- Aesthetic Tools --
-
-emptyLine :: IO ()
-emptyLine = putStrLn ""
 -- 
-dashedLine :: IO ()
-dashedLine = putStrLn "--------------------------------------------------------------------------------"
+printMsg :: Int -> [String] -> IO ()
+printMsg n msgs = do
+    let line = toMagenta $ replicate n '='
+        gap = replicate 5 ' '
+    putStrLn line
+    mapM_ (\ msg -> putStrLn $ toMagenta "=" <> gap <> msg <> gap <> toMagenta "=") msgs
+    putStrLn line
 -- 
-whiteLine :: IO ()
-whiteLine = putStrLn "============================================================================================================"
--- 
-shortLine :: IO ()
-shortLine = putStrLn "---------------"
+-- emptyLine :: IO ()
+-- emptyLine = putStrLn ""
+-- -- 
+-- dashedLine :: IO ()
+-- dashedLine = putStrLn "--------------------------------------------------------------------------------"
+-- -- 
+-- whiteLine :: IO ()
+-- whiteLine = putStrLn "============================================================================================================"
+-- -- 
+-- shortLine :: IO ()
+-- shortLine = putStrLn "---------------"
 -- 
 class ToColor a where
     toBlack, toRed, toGreen, toYellow, toBlue, toMagenta, toCyan, toWhite, toIBlack, toIRed, toIGreen, toIYellow, toIBlue, toIMagenta, toICyan, toIWhite
@@ -89,4 +98,4 @@ class ToColor a where
 instance ToColor GYLogNamespace
 instance ToColor String
 
---------------------------------------------------------------------------------------------------------------------------- |
+---------------------------------------------------------------------------------------------------------------------------

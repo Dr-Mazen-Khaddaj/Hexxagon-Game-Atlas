@@ -9,6 +9,7 @@ import  DataTypes                   ( Player(BluePlayer), GameSettings(Settings)
 import  Instances                   ()
 import  Constants                   ( thousand, classicBoard_S9DC3, million )
 import  Scripts                     qualified
+import  DAppConfig                  (Config (..))
 
 --------------------------------------------------------------------------------------------------------------------------- |
 ------------------------------------------------- | Transaction Skeleton | ------------------------------------------------ |
@@ -28,13 +29,13 @@ skeleton identifierNFT initialiseGameSCAddress = pure
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: GYCoreConfig -> GYPaymentSigningKey -> GYAddress -> GYAssetClass -> GYProviders -> IO GYTxId
-action    coreCfg         walletSkey             walletAddr   identifierNFT     providers  = do
+action :: Config -> GYProviders -> IO GYTxBody
+action (Config coreCfg walletAddrs changeAddr identifierNFT _) providers = do
     initialiseGameSCAddress <- Scripts.gyScriptToAddress <$> Scripts.initialiseGameSC
-    txBody <- runGYTxMonadNode networkID providers [walletAddr] walletAddr Nothing $ skeleton identifierNFT initialiseGameSCAddress
-    gySubmitTx providers $ signGYTxBody txBody [walletSkey]
+    runTx $ skeleton identifierNFT initialiseGameSCAddress
     where
         networkID = cfgNetworkId coreCfg
+        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
 
 --------------------------------------------------------------------------------------------------------------------------- |
 --------------------------------------------------------------------------------------------------------------------------- |

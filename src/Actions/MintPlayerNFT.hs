@@ -9,6 +9,7 @@ import DataTypes            ( Metadata (..) )
 import Instances            ()
 import Scripts              qualified
 import PlutusTx.AssocMap    qualified as AssocMap
+import DAppConfig           (Config (..))
 
 --------------------------------------------------------------------------------------------------------------------------- |
 ------------------------------------------------- | Transaction Skeleton | ------------------------------------------------ |
@@ -19,8 +20,6 @@ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress = pure
     <> mustHaveOutput (GYTxOut refNFTManagerSCAddress (refNFT <> q2ADA) (Just (metadataData , GYTxOutUseInlineDatum)) Nothing)
     <> mustMint playerIdentifierMP unitRedeemer userNFT_Name 1
     <> mustMint playerIdentifierMP unitRedeemer refNFT_Name  1
-
-    <> mustHaveOutput (GYTxOut namiWallet (userNFT <> q2ADA) Nothing Nothing)
 
     where
         playerIdentifierMPID = mintingPolicyIdFromWitness playerIdentifierMP
@@ -33,7 +32,6 @@ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress = pure
 
         q2ADA           = valueFromLovelace 2_000_000
         refNFT          = valueSingleton (GYToken playerIdentifierMPID refNFT_Name)  1
-        userNFT         = valueSingleton (GYToken playerIdentifierMPID userNFT_Name) 1
 
         metadataData = datumFromPlutusData metadata
         metadata = Metadata hexxagonMetadata 2 (List [])
@@ -44,22 +42,19 @@ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress = pure
                                                 , ("score"          , I 0                                                        )
                                                 ]
 
-        namiWallet = unsafeAddressFromText "addr_test1qq9hmyg6p6g3s7ufrffd9c8u55e90r3h75sn9y3umjdnhlqwdlgtx98p7x7agm5fc9gf4fdx8mh3z82kza0uz4qlhywsqmuzdd"
-
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: GYCoreConfig -> GYPaymentSigningKey -> GYAddress -> GYProviders -> IO GYTxId
-action    coreCfg         walletSkey             walletAddr     providers  = do
-    Just (theUniqueTxOutRef ,_) <- query (utxosAtAddress walletAddr Nothing) >>= randomTxOutRef
+action :: Config -> GYProviders -> IO GYTxBody
+action (Config coreCfg walletAddrs changeAddr _ _) providers = do
+    Just (theUniqueTxOutRef ,_) <- query (utxosAtAddresses walletAddrs) >>= randomTxOutRef
     playerIdentifierMP          <- Scripts.playerIdentifierMP theUniqueTxOutRef
     refNFTManagerSCAddress      <- Scripts.gyScriptToAddress <$> Scripts.refNFTManagerSC
-    txBody <- runGYTxMonadNode networkID providers [walletAddr] walletAddr Nothing $ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress
-    print playerIdentifierMP
-    gySubmitTx providers $ signGYTxBody txBody [walletSkey]
+    runTx $ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
+        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
 
 --------------------------------------------------------------------------------------------------------------------------- |
 --------------------------------------------------------------------------------------------------------------------------- |

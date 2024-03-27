@@ -9,6 +9,7 @@ import  Instances       ()
 import  GYUtilities     ( getAssets, utxoHasAnyAsset, utxoHasAssetClass, gameSettingsFromUTxO, playerToGYAssetClass )
 import  IOUtilities     ( chooseIndex )
 import  Scripts         qualified
+import  DAppConfig      (Config (..))
 
 --------------------------------------------------------------------------------------------------------------------------- |
 ------------------------------------------------- | Transaction Skeleton | ------------------------------------------------ |
@@ -26,19 +27,19 @@ skeleton initialiseGameSC gameToCancel authNFTRef = pure
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: GYCoreConfig -> GYPaymentSigningKey -> GYAddress -> GYProviders -> IO GYTxId
-action    coreCfg         walletSkey             walletAddr     providers  = do
+action :: Config -> GYProviders -> IO GYTxBody
+action (Config coreCfg walletAddrs changeAddr _ _) providers = do
     initialiseGameSCScript  <- Scripts.initialiseGameSC
     initialiseGameSCUTxOs   <- query $ utxosAtAddress (Scripts.gyScriptToAddress initialiseGameSCScript) Nothing
-    walletUTxOs             <- query $ utxosAtAddress walletAddr Nothing
+    walletUTxOs             <- query $ utxosAtAddresses walletAddrs
     gameToCancel            <- selectUTxO $ filterUTxOs (utxoHasAnyAsset $ getAssets walletUTxOs) initialiseGameSCUTxOs
     let identifierNFT = playerToGYAssetClass . getPlayer1 $ fromMaybe (error "Can't get GameSettings!") (gameSettingsFromUTxO gameToCancel)
         authNFTRef = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
-    txBody <- runGYTxMonadNode networkID providers [walletAddr] walletAddr Nothing $ skeleton initialiseGameSCScript gameToCancel authNFTRef
-    gySubmitTx providers $ signGYTxBody txBody [walletSkey]
+    runTx $ skeleton initialiseGameSCScript gameToCancel authNFTRef
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
+        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
 
 selectUTxO :: GYUTxOs -> IO GYUTxO
 selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "UTxO" (utxosRefs utxos)

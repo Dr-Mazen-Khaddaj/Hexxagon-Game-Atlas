@@ -1,42 +1,23 @@
-module GameConfig (getGameConfig, Config (..)) where
+module GetConfig (getLocalConfig) where
 
-import GeniusYield.GYConfig
 import GeniusYield.Types
+import DAppConfig           (LocalConfig (..), Config (Config))
 import System.Directory     (doesDirectoryExist, createDirectory)
-import System.FilePath      (takeBaseName)
+import IOUtilities          (fetchFilesWithExtension, askYesNo, getLine', chooseIndex)
+import GeniusYield.GYConfig (coreConfigIO)
 import Control.Monad        (unless)
-import IOUtilities
+import System.FilePath      (takeBaseName)
 
---------------------------------------------------------------------------------------------------------------------------- |
-data Config = Config
-    { getCoreConfig :: GYCoreConfig
-    , getSigningKey :: GYPaymentSigningKey
-    , getAddress    :: GYAddress
-    , getPlayerNFT  :: GYAssetClass
-    , getLatestTxID :: Maybe GYTxId
-    }
+--------------------------------------------------------------------------------------------------------------------------
 
-instance Show Config where
-    show (Config coreConfig signingKey address gameNFT latestTxID) =
-        "-- Config --"    <> "\n" <>
-        show coreConfig   <> "\n" <>
-        show signingKey   <> "\n" <>
-        show address      <> "\n" <>
-        show gameNFT      <> "\n" <>
-        show latestTxID   <> "\n" <>
-        "------------"
---------------------------------------------------------------------------------------------------------------------------- |
-
-getGameConfig :: IO Config
-getGameConfig = do
+getLocalConfig :: IO LocalConfig
+getLocalConfig = do
     coreCfg <- coreConfigIO "./Configurations/config.json"
     signingKey  <- checkForPaymentSigningKey >>= \case  True  -> getPaymentSigningKey
                                                         False -> makeNewPaymentSigningKey
     let walletAddr = addressFromPaymentKeyHash GYTestnetPreview . paymentKeyHash $ paymentVerificationKey signingKey
     let nft = GYLovelace -- This should be changed to a real NFT after the minting action is implemented.
-    pure $ Config coreCfg signingKey walletAddr nft Nothing
-
---------------------------------------------------------------------------------------------------------------------------- |
+    pure $ LocalConfig (Config coreCfg [walletAddr] walletAddr nft Nothing) signingKey
 
 checkForPaymentSigningKey :: IO Bool
 checkForPaymentSigningKey = do
@@ -50,8 +31,6 @@ checkForPaymentSigningKey = do
             not <$> askYesNo
         else return False
     else return False
-
---------------------------------------------------------------------------------------------------------------------------- |
 
 makeNewPaymentSigningKey :: IO GYPaymentSigningKey
 makeNewPaymentSigningKey = do
@@ -69,12 +48,10 @@ writePSKToFile name key = do
     unless dirExists $ createDirectory dir
     writePaymentSigningKey (dir <> name <> ".SigningKey") key
 
---------------------------------------------------------------------------------------------------------------------------- |
-
 getPaymentSigningKey :: IO GYPaymentSigningKey
 getPaymentSigningKey = do
     files <- fetchFilesWithExtension "./keys/" ".SigningKey"
     chosenFile <- (files !!) <$> chooseIndex "Key" (takeBaseName <$> files)
     readPaymentSigningKey chosenFile
 
---------------------------------------------------------------------------------------------------------------------------- |
+--------------------------------------------------------------------------------------------------------------------------
