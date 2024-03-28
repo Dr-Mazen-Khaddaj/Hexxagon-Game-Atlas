@@ -4,6 +4,7 @@ module IOUtilities  ( chooseIndex
                     , getLine'
                     , printTxID
                     , printMsg
+                    , UnquotedString(..)
                     , ToColor(..)
                     ) where
 
@@ -17,12 +18,13 @@ import GeniusYield.Imports  ( fromString, IsString   )
 
 chooseIndex :: Show a => String -> [a] -> IO Int
 chooseIndex typeName list = do
-    printMsg (width + 16) listStr
+    printMsg (width + 18) listStr
     putStr $ "Select " <> typeName <> " : "
     ($ 1) . (-) <$> getInt [1..(length list)]
     where
         width = maximum $ length . show <$> list
-        listStr = [ show i <> " - " <> e <> replicate (width - length e) ' ' | (i,show -> e) <- zip @Int [1..] list]
+        space i | i < 10 = " " | otherwise = ""
+        listStr = [ space i <> show i <> " - " <> e <> replicate (width +1 - length e) ' ' | (i,show -> e) <- zip @Int [1..] list]
 
 fetchFilesWithExtension :: FilePath -> String -> IO [FilePath]
 fetchFilesWithExtension dir ext = ((dir <>) <$>) . filter ((== ext) . takeExtension) <$> listDirectory dir
@@ -64,17 +66,10 @@ printMsg n msgs = do
     mapM_ (\ msg -> putStrLn $ toMagenta "=" <> gap <> msg <> gap <> toMagenta "=") msgs
     putStrLn line
 -- 
--- emptyLine :: IO ()
--- emptyLine = putStrLn ""
--- -- 
--- dashedLine :: IO ()
--- dashedLine = putStrLn "--------------------------------------------------------------------------------"
--- -- 
--- whiteLine :: IO ()
--- whiteLine = putStrLn "============================================================================================================"
--- -- 
--- shortLine :: IO ()
--- shortLine = putStrLn "---------------"
+
+newtype UnquotedString = Unquoted String
+instance Show UnquotedString where show (Unquoted s) = s
+
 -- 
 class ToColor a where
     toBlack, toRed, toGreen, toYellow, toBlue, toMagenta, toCyan, toWhite, toIBlack, toIRed, toIGreen, toIYellow, toIBlue, toIMagenta, toICyan, toIWhite

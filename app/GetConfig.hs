@@ -3,10 +3,14 @@ module GetConfig (getLocalConfig) where
 import GeniusYield.Types
 import DAppConfig           (LocalConfig (..), Config (Config))
 import System.Directory     (doesDirectoryExist, createDirectory)
-import IOUtilities          (fetchFilesWithExtension, askYesNo, getLine', chooseIndex)
-import GeniusYield.GYConfig (coreConfigIO)
+import IOUtilities          (fetchFilesWithExtension, askYesNo, getLine', chooseIndex, ToColor (..))
+import GeniusYield.GYConfig (coreConfigIO, withCfgProviders, cfgNetworkId)
 import Control.Monad        (unless)
 import System.FilePath      (takeBaseName)
+import UtilityFxs (bytesFromHex)
+import qualified Data.Set as Set
+import GeniusYield.TxBuilder (runGYTxQueryMonadNode, utxosAtAddresses)
+import GYUtilities (getAssets)
 
 --------------------------------------------------------------------------------------------------------------------------
 
@@ -16,8 +20,15 @@ getLocalConfig = do
     signingKey  <- checkForPaymentSigningKey >>= \case  True  -> getPaymentSigningKey
                                                         False -> makeNewPaymentSigningKey
     let walletAddr = addressFromPaymentKeyHash GYTestnetPreview . paymentKeyHash $ paymentVerificationKey signingKey
-    let nft = GYLovelace -- This should be changed to a real NFT after the minting action is implemented.
-    pure $ LocalConfig (Config coreCfg [walletAddr] walletAddr nft Nothing) signingKey
+        networkID = cfgNetworkId coreCfg
+    walletUTxOs <- withCfgProviders coreCfg (toIGreen "Get Wallet UTxOs") $ \ providers ->
+        runGYTxQueryMonadNode networkID providers $ utxosAtAddresses [walletAddr]
+    let playerNFTs = Set.filter belongToGame $ getAssets walletUTxOs
+    pure $ LocalConfig (Config coreCfg [walletAddr] walletAddr walletUTxOs playerNFTs) signingKey
+
+belongToGame :: GYAssetClass -> Bool
+belongToGame GYLovelace = False
+belongToGame (GYToken _ (GYTokenName name)) = name == bytesFromHex "000de140" <> "HEXXAGON"
 
 checkForPaymentSigningKey :: IO Bool
 checkForPaymentSigningKey = do

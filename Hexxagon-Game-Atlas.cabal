@@ -113,6 +113,7 @@ executable Hexxagon-Game-Atlas
                     , directory
                     , filepath
                     , mtl
+                    , containers
 
 executable Hexxagon-Game-Server
     import:           common
@@ -128,6 +129,7 @@ executable Hexxagon-Game-Server
                     , base16-bytestring
                     , aeson-pretty
                     , bytestring
+                    , containers
                     , atlas-cardano
                     , servant-server
                     , transformers

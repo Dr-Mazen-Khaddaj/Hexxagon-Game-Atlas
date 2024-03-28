@@ -3,13 +3,13 @@ module Actions.CancelGame (action) where
 import  GeniusYield.Types
 import  GeniusYield.TxBuilder
 import  GeniusYield.GYConfig
-import  Data.Maybe      ( fromMaybe)
+import  Data.Maybe      ( fromMaybe )
+import  DAppConfig      ( Config (..) )
 import  DataTypes       ( Initialization (Withdraw), GameSettings (getPlayer1) )
 import  Instances       ()
-import  GYUtilities     ( getAssets, utxoHasAnyAsset, utxoHasAssetClass, gameSettingsFromUTxO, playerToGYAssetClass )
+import  GYUtilities     ( utxoHasAnyAsset, utxoHasAssetClass, gameSettingsFromUTxO, playerToGYAssetClass )
 import  IOUtilities     ( chooseIndex )
 import  Scripts         qualified
-import  DAppConfig      (Config (..))
 
 --------------------------------------------------------------------------------------------------------------------------- |
 ------------------------------------------------- | Transaction Skeleton | ------------------------------------------------ |
@@ -28,11 +28,12 @@ skeleton initialiseGameSC gameToCancel authNFTRef = pure
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
 action :: Config -> GYProviders -> IO GYTxBody
-action (Config coreCfg walletAddrs changeAddr _ _) providers = do
+action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers = do
     initialiseGameSCScript  <- Scripts.initialiseGameSC
     initialiseGameSCUTxOs   <- query $ utxosAtAddress (Scripts.gyScriptToAddress initialiseGameSCScript) Nothing
-    walletUTxOs             <- query $ utxosAtAddresses walletAddrs
-    gameToCancel            <- selectUTxO $ filterUTxOs (utxoHasAnyAsset $ getAssets walletUTxOs) initialiseGameSCUTxOs
+    gameToCancel            <- case filterUTxOs (utxoHasAnyAsset playerNFTs) initialiseGameSCUTxOs of
+                                (utxosSize -> 0) -> error "No Games available to Cancel!"
+                                xs -> selectUTxO xs
     let identifierNFT = playerToGYAssetClass . getPlayer1 $ fromMaybe (error "Can't get GameSettings!") (gameSettingsFromUTxO gameToCancel)
         authNFTRef = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
     runTx $ skeleton initialiseGameSCScript gameToCancel authNFTRef

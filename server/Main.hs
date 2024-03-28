@@ -11,7 +11,7 @@ import qualified Actions.CancelGame
 import qualified Actions.MintPlayerNFT
 import GeniusYield.Types (GYProviders (..), GYTxBody, GYAwaitTxParameters (GYAwaitTxParameters))
 import Control.Monad.IO.Class (liftIO)
-import IOUtilities (chooseIndex, printTxID, ToColor (..), printMsg)
+import IOUtilities (chooseIndex, printTxID, ToColor (..), printMsg, UnquotedString (Unquoted))
 import GeniusYield.GYConfig (withCfgProviders)
 import SignTransaction (signTransaction)
 
@@ -36,7 +36,7 @@ printRetrievedAddresses (Config _ walletAddresses changeAddress _ _) = do
 runDApp :: StateT Config IO ()
 runDApp = do
     coreCfg <- gets getCoreConfig
-    i <- liftIO $ chooseIndex @String "Action" ["Create Game", "Cancel Game" , "Mint Player NFT"]
+    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Mint Player NFT"]
     txBody <- case i of
         0 -> buildTxBody "CreateGame"       Actions.CreateGame.action
         1 -> buildTxBody "CancelGame"       Actions.CancelGame.action
