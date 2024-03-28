@@ -62,7 +62,7 @@ library
 
                     , Actions.CreateGame
                     , Actions.CancelGame
-                    , Actions.StartGame
+                    , Actions.JoinGame
                     , Actions.PlayGame
                     , Actions.GameOver
                     , Actions.TimeOut

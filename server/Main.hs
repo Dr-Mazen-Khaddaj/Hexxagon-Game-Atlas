@@ -9,6 +9,7 @@ import Control.Monad.Trans.State (StateT, runStateT, gets, get)
 import qualified Actions.CreateGame
 import qualified Actions.CancelGame
 import qualified Actions.MintPlayerNFT
+import qualified Actions.JoinGame
 import GeniusYield.Types (GYProviders (..), GYTxBody, GYAwaitTxParameters (GYAwaitTxParameters))
 import Control.Monad.IO.Class (liftIO)
 import IOUtilities (chooseIndex, printTxID, ToColor (..), printMsg, UnquotedString (Unquoted))
@@ -28,19 +29,15 @@ main = do
     _ <- runStateT runDApp config
     pure ()
 
-printRetrievedAddresses :: Config -> IO ()
-printRetrievedAddresses (Config _ walletAddresses changeAddress _ _) = do
-    putStrLn "Retrieved wallet addresses: " >> mapM_ print walletAddresses
-    putStrLn "Change address: " >> print changeAddress
-
 runDApp :: StateT Config IO ()
 runDApp = do
     coreCfg <- gets getCoreConfig
-    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Mint Player NFT"]
+    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Join Game" , "Mint Player NFT"]
     txBody <- case i of
         0 -> buildTxBody "CreateGame"       Actions.CreateGame.action
         1 -> buildTxBody "CancelGame"       Actions.CancelGame.action
-        2 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
+        2 -> buildTxBody "StartGame"        Actions.JoinGame.action
+        3 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
         _ -> error "Action Not available!"
     liftIO $ withCfgProviders coreCfg (toIGreen "SubmitTx") $ signAndSubmitTx txBody
 
@@ -56,6 +53,11 @@ signAndSubmitTx txBody providers = signTransaction txBody >>= gySubmitTx provide
     gyAwaitTxConfirmed providers awaitParams txId >> printTxID txId
     where
         awaitParams = GYAwaitTxParameters 20 10_000_000 1
+
+printRetrievedAddresses :: Config -> IO ()
+printRetrievedAddresses (Config _ walletAddresses changeAddress _ _) = do
+    putStrLn "Retrieved wallet addresses: " >> mapM_ print walletAddresses
+    putStrLn "Change address: " >> print changeAddress
 
 welcomeScreen :: IO ()
 welcomeScreen = printMsg 100    [           "                                                                                        "
