@@ -78,13 +78,13 @@ data Metadata           = Metadata  { getMetadata       :: AssocMap.Map BuiltinB
                                     , getExtraData      :: Data
                                     }
 
-----------------------------------------------------------------------------------------------------------------------------
-
-data Hexx = Hexx
-  { playerTurn :: Hexagon
-  , lastMove :: Move
-  , winner :: Maybe Hexagon
-  , board :: Board
-  } deriving Eq
+-- Local
+data Hexx               = Hexx      { playerTurn        :: Hexagon
+                                    , lastMove          :: Move
+                                    , winner            :: Maybe Hexagon
+                                    , board             :: Board
+                                    } deriving Eq
 
 type Blockchain = Bool
+
+----------------------------------------------------------------------------------------------------------------------------
