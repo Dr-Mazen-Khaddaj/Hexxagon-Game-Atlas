@@ -63,7 +63,7 @@ library
                     , Actions.CreateGame
                     , Actions.CancelGame
                     , Actions.JoinGame
-                    , Actions.PlayGame
+                    , Actions.RunGame
                     , Actions.GameOver
                     , Actions.TimeOut
                     , Actions.MintPlayerNFT

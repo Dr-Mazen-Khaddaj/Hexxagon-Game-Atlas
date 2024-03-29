@@ -8,8 +8,9 @@ import GetConfig (getConfig)
 import Control.Monad.Trans.State (StateT, runStateT, gets, get)
 import qualified Actions.CreateGame
 import qualified Actions.CancelGame
-import qualified Actions.MintPlayerNFT
 import qualified Actions.JoinGame
+import qualified Actions.RunGame
+import qualified Actions.MintPlayerNFT
 import GeniusYield.Types (GYProviders (..), GYTxBody, GYAwaitTxParameters (GYAwaitTxParameters))
 import Control.Monad.IO.Class (liftIO)
 import IOUtilities (chooseIndex, printTxID, ToColor (..), printMsg, UnquotedString (Unquoted))
@@ -32,12 +33,13 @@ main = do
 runDApp :: StateT Config IO ()
 runDApp = do
     coreCfg <- gets getCoreConfig
-    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Join Game" , "Mint Player NFT"]
+    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Join Game" , "Run Game" , "Mint Player NFT"]
     txBody <- case i of
         0 -> buildTxBody "CreateGame"       Actions.CreateGame.action
         1 -> buildTxBody "CancelGame"       Actions.CancelGame.action
-        2 -> buildTxBody "StartGame"        Actions.JoinGame.action
-        3 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
+        2 -> buildTxBody "JoinGame"         Actions.JoinGame.action
+        3 -> buildTxBody "RunGame"          Actions.RunGame.action
+        4 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
         _ -> error "Action Not available!"
     liftIO $ withCfgProviders coreCfg (toIGreen "SubmitTx") $ signAndSubmitTx txBody
 
