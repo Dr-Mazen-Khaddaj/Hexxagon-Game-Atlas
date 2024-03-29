@@ -276,13 +276,6 @@ saveGame g s = do
     Right g' -> return ()
     _ -> return ()
 
---loadGame :: String -> InputT IO (Maybe String)
---loadGame s = do
---  g <- liftIO . try . readFile . last $ words s :: InputT IO (Either IOException String)
---  case g of
---    Right g' -> return $ Just g'
---    _        -> return Nothing
-
 scoreIO :: Board -> InputT IO ()
 scoreIO b = outputStrLn . (\(r,bl) -> "\n   " <> (if r == 0 then "\n" else show r <> "\n   ") <> concatMap cRed (replicate r ' ') <> "\n   " <> (if bl == 0 then "" else show bl) <> "\n   " <> concatMap cBlue (replicate bl ' ')) $ score b
 
