@@ -19,16 +19,20 @@ import PlutusCore.Data (Data)
 import PlutusLedgerApi.V2 (BuiltinData(..))
 
 ---------------------------------------------------- | Show Instance | -----------------------------------------------------
+
 -- Show Hexxagon
-instance Show Hexagon where show :: Hexagon -> String
-                            show Empty  = "-"
-                            show Red    = "R"
-                            show Blue   = "B"
+instance Show Hexagon where
+  show Red   = "R"
+  show Blue  = "B"
+  show Empty = "E"
 
 -- Show Board
 instance Show Board where
-    show :: Board -> String
-    show = showBoard Edge CoordsAndHexs
+  show = showBoard Edge CoordsAndHexs []
+
+instance Enum Hexagon where
+  succ Red  = Blue
+  succ Blue = Red
 
 ---- Show Board (Vertex Orientation) ----       ---- Show Board (Edge Orientation) ---- __    __    __    __
 --  / \ / \ / \ / \ / \ / \ / \ / \ / \ / \     -- /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
@@ -37,11 +41,11 @@ instance Show Board where
 --   |   |   |   |   |   |   |   |   |   |   |  --    /  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \
 --    \ / \ / \ / \ / \ / \ / \ / \ / \ / \ /   --    \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/  \__/
 
-showBoard :: Orientation -> BoardMode -> Board -> String
-showBoard orientation mode = showOrganizedBoard orientation mode . organizeBoard orientation
+showBoard :: Orientation -> BoardMode -> [Position] -> Board -> String
+showBoard orientation mode pos = showOrganizedBoard orientation mode pos . organizeBoard orientation
 
 data Orientation = Vertex | Edge
-data BoardMode = Clear | OnlyHexagons | OnlyCoordinates | CoordsAndHexs
+data BoardMode = Clear | OnlyHexagons | OnlyCoordinates | CoordsAndHexs | SelectiveCoords
 data Side = Top | Middle | Bottom
 
 organizeBoard :: Orientation -> Board -> [[Maybe Block]]
@@ -69,12 +73,12 @@ organizeLine = fillLine 0 . List.sortOn (getX . fst)
         fillLine _ [] = []
 
 
-showOrganizedBoard :: Orientation -> BoardMode -> [[Maybe Block]] -> String
-showOrganizedBoard orientation mode = case orientation of
+showOrganizedBoard :: Orientation -> BoardMode -> [Position] -> [[Maybe Block]] -> String
+showOrganizedBoard orientation mode pos'= case orientation of
     Edge    -> concatLines . pruneBoard . (showLine <$>) . zip [1..]
     Vertex  -> concatLines              . (showLine <$>) . zip [1..]
     where
-        pruneBoard board = (pruneLine (length board * 2) <$>) <$> board
+        pruneBoard b = (pruneLine (length b * 2) <$>) <$> b
         pruneLine l (c:cs) = c: drop l cs
         pruneLine _ [] = []
 
@@ -88,7 +92,9 @@ showOrganizedBoard orientation mode = case orientation of
                 showHex Top    (Just _)     = topHex
                 showHex Middle (Just (p,h)) = middleHex p h
                 showHex Bottom (Just (_,h)) = case (orientation,mode) of
+                                                (Edge,OnlyHexagons)   -> bottomWithHex h
                                                 (Edge,CoordsAndHexs)  -> bottomWithHex h
+                                                (Edge,SelectiveCoords)-> bottomWithHex h
                                                 _                     -> bottomHex
                 showHex _      Nothing      = noHex
                 concatMiddle (m1:m2:ms) = if last m1 == '|' then m1 <> concatMiddle (tail m2 : ms)
@@ -101,17 +107,21 @@ showOrganizedBoard orientation mode = case orientation of
                 middleHex pos hex = case orientation of
                     Edge    -> case mode of
                         Clear           -> "/   \\   "
-                        OnlyHexagons    -> "/ " <> show hex <> " \\   "
+                        OnlyHexagons    -> "/   \\   "
                         OnlyCoordinates -> "/" <> show (mod pos.getX 10) <> "," <> show (mod pos.getY 10) <> "\\   "
                         CoordsAndHexs   -> "/" <> show (mod pos.getX 10) <> " " <> show (mod pos.getY 10) <> "\\   "
+                        SelectiveCoords -> if   elem pos pos' 
+                                           then "/" <> show (mod pos.getX 10) <> " " <> show (mod pos.getY 10) <> "\\   "
+                                           else "/   \\   "
                     Vertex  -> case mode of
                         Clear           -> "|   |"
-                        OnlyHexagons    -> "| " <> show hex <> " |"
+                        OnlyHexagons    -> "|   |"
                         OnlyCoordinates -> "|" <> show (mod pos.getX 10) <> "," <> show (mod pos.getY 10) <> "|"
                         CoordsAndHexs   -> "|" <> show (mod pos.getX 10) <> show hex <> show (mod pos.getY 10) <> "|"
-                bottomWithHex hex = case hex of
-                    Empty   -> "\\___/   "
-                    _       -> "\\_" <> show hex <> "_/   "
+                        SelectiveCoords -> if   elem pos pos' 
+                                           then "|" <> show (mod pos.getX 10) <> show hex <> show (mod pos.getY 10) <> "|"
+                                           else "|   |"
+                bottomWithHex hex = "\\_" <> show hex <> "_/   "
                 hexSize = case orientation of
                     Edge    -> 4
                     Vertex  -> 2

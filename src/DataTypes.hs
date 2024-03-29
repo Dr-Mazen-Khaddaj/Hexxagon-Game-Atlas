@@ -12,6 +12,8 @@ module  DataTypes   ( Player            (..)
                     , GameInfo          (..)
                     , RunGame           (..)
                     , Metadata          (..)
+                    , Hexx              (..)
+                    , Blockchain
                     ) where
 
 import  PlutusLedgerApi.V2  (CurrencySymbol, TokenName, POSIXTime, BuiltinByteString, Data)
@@ -77,3 +79,12 @@ data Metadata           = Metadata  { getMetadata       :: AssocMap.Map BuiltinB
                                     }
 
 ----------------------------------------------------------------------------------------------------------------------------
+
+data Hexx = Hexx
+  { playerTurn :: Hexagon
+  , lastMove :: Move
+  , winner :: Maybe Hexagon
+  , board :: Board
+  } deriving Eq
+
+type Blockchain = Bool
