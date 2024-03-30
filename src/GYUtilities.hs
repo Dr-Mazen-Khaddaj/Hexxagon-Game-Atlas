@@ -22,6 +22,7 @@ valueHasAssetClass nft = Set.member nft . valueAssets
 utxoHasAssetClass :: GYAssetClass -> GYUTxO -> Bool
 utxoHasAssetClass nft = Set.member nft . valueAssets . utxoValue
 
+-- change name to getUTxOsByNFT or make it return 1 UTxO
 getUTxOByNFT :: GYAddress -> GYAssetClass -> GYTxQueryMonadNode GYUTxOs
 getUTxOByNFT addr nft = utxosAtAddress addr (Just nft)
 
