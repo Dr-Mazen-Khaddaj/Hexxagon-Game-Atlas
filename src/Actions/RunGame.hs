@@ -107,7 +107,6 @@ action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers 
             runTx $ mconcat <$> sequence    [ skeleton runGameSCScript gameToRun authNFTRef runGame currentSlot
                                             , updateMetadataSkeleton refNFTManagerSCScript refNFTUTxO
                                             ]
-
         _ -> do
             let identifierNFT   = playerToGYAssetClass $ getPlayer'sTurn gameInfo.getGameState
                 authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs

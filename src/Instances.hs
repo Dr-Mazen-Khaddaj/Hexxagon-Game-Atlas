@@ -95,10 +95,10 @@ showOrganizedBoard orientation mode = case orientation of
                 indentation = '\n' : replicate (hexSize*n) ' '
                 showHex Top    (Just _)     = topHex
                 showHex Middle (Just (p,h)) = middleHex p h
-                showHex Bottom (Just (_,h)) = case (orientation,mode) of
-                                                (Edge,CoordsAndHexs)     -> bottomWithHex h
-                                                (Edge,SelectiveCoords _) -> bottomWithHex' h
-                                                _                        -> bottomHex
+                showHex Bottom (Just (p,h)) = case (orientation,mode) of
+                                                (Edge,CoordsAndHexs)        -> bottomWithHex h
+                                                (Edge,SelectiveCoords ps)   -> if p `elem` ps then bottomWithHex h else bottomHex
+                                                _                           -> bottomHex
                 showHex _      Nothing      = noHex
                 concatMiddle (m1:m2:ms) = if last m1 == '|' then m1 <> concatMiddle (tail m2 : ms)
                                                             else m1 <> concatMiddle (m2 : ms)
@@ -115,7 +115,7 @@ showOrganizedBoard orientation mode = case orientation of
                         CoordsAndHexs   -> "/" <> show (mod pos.getX 10) <> " " <> show (mod pos.getY 10) <> "\\   "
                         SelectiveCoords ps -> if pos `elem` ps
                                         then "/" <> show (mod pos.getX 10) <> " " <> show (mod pos.getY 10) <> "\\   "
-                                        else "/   \\   "
+                                        else "/ " <> show hex <> " \\   "
                     Vertex  -> case mode of
                         Clear           -> "|   |"
                         OnlyHexagons    -> "| " <> show hex <> " |"
@@ -123,8 +123,7 @@ showOrganizedBoard orientation mode = case orientation of
                         CoordsAndHexs   -> "|" <> show (mod pos.getX 10) <> show hex <> show (mod pos.getY 10) <> "|"
                         SelectiveCoords ps -> if pos `elem` ps
                                         then "|" <> show (mod pos.getX 10) <> show hex <> show (mod pos.getY 10) <> "|"
-                                        else "|   |"
-                bottomWithHex' hex = "\\_" <> show hex <> "_/   "
+                                        else "| " <> show hex <> " |"
                 bottomWithHex hex = case hex of
                     Empty   -> "\\___/   "
                     _       -> "\\_" <> show hex <> "_/   "

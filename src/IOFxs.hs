@@ -157,7 +157,7 @@ getFinalPosition g@(Hexx pt lm w oc b) ip = do
   liftIO resetCursor
   hexxagonTitle pt
   scoreIO b
-  outputStrLn . concatMap colorize $ showBoard Edge SelectiveCoords (concatMap (getNearbyPositions b ip Empty) [1,2]) b
+  outputStrLn . concatMap colorize $ showBoard Edge (SelectiveCoords (concatMap (getNearbyPositions b ip Empty) [1,2])) b
   fp <- getInputLine "   "
   case fp of
     Just [] -> return $ Right Nothing
@@ -169,7 +169,7 @@ getInitialPosition g@(Hexx pt lm w oc b@(Board mph)) = do
   liftIO resetCursor
   hexxagonTitle pt
   scoreIO b
-  outputStrLn . concatMap colorize $ showBoard Edge SelectiveCoords (filter (\p -> length (concat $ getNearbyPositions b p Empty <$> [1,2]) > 0) $ Map.keys $ Map.filter (== pt) mph) b
+  outputStrLn . concatMap colorize $ showBoard Edge (SelectiveCoords (filter (\p -> length (concat $ getNearbyPositions b p Empty <$> [1,2]) > 0) $ Map.keys $ Map.filter (== pt) mph)) b
   ip <- getInputLine "   "
   case ip of
     Just [] -> return $ Right Nothing
@@ -207,7 +207,7 @@ screen (Hexx pt lm w oc b) = do
   liftIO resetCursor
   hexxagonTitle pt
   scoreIO b
-  outputStrLn . concatMap colorize $ showBoard Edge OnlyHexagons [] b
+  outputStrLn . concatMap colorize $ showBoard Edge OnlyHexagons b
   return ()
 
 screenWinner :: Hexx -> InputT IO ()
@@ -215,7 +215,7 @@ screenWinner (Hexx pt lm w oc b) = do
   liftIO resetCursor
   hexxagonWinner w
   scoreIO b
-  outputStrLn . concatMap colorize $ showBoard Edge OnlyHexagons [] b
+  outputStrLn . concatMap colorize $ showBoard Edge OnlyHexagons b
   return ()
 
 testGI :: GameInfo

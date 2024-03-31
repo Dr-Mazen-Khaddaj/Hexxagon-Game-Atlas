@@ -4,8 +4,8 @@ import Control.Concurrent
 import Control.Concurrent.Async (async)
 import RunServer (runServer)
 import DAppConfig (Config(..))
-import GetConfig (getConfig)
-import Control.Monad.Trans.State (StateT, runStateT, gets, get)
+import GetConfig (getConfig, updateConfig)
+import Control.Monad.Trans.State (StateT, runStateT, gets, get, put)
 import qualified Actions.CreateGame
 import qualified Actions.CancelGame
 import qualified Actions.JoinGame
@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (liftIO)
 import IOUtilities (chooseIndex, printTxID, ToColor (..), printMsg, UnquotedString (Unquoted))
 import GeniusYield.GYConfig (withCfgProviders)
 import SignTransaction (signTransaction)
+import Control.Monad (unless)
 
 main :: IO ()
 main = do
@@ -33,15 +34,18 @@ main = do
 runDApp :: StateT Config IO ()
 runDApp = do
     coreCfg <- gets getCoreConfig
-    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Join Game" , "Run Game" , "Mint Player NFT"]
-    txBody <- case i of
-        0 -> buildTxBody "CreateGame"       Actions.CreateGame.action
-        1 -> buildTxBody "CancelGame"       Actions.CancelGame.action
-        2 -> buildTxBody "JoinGame"         Actions.JoinGame.action
-        3 -> buildTxBody "RunGame"          Actions.RunGame.action
-        4 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
-        _ -> error "Action Not available!"
-    liftIO $ withCfgProviders coreCfg (toIGreen "SubmitTx") $ signAndSubmitTx txBody
+    i <- liftIO $ chooseIndex "Action" $ Unquoted <$> ["Create Game", "Cancel Game" , "Join Game" , "Run Game" , "Mint Player NFT", "Exit"]
+    unless (i == 5) $ do
+        txBody <- case i of
+            0 -> buildTxBody "CreateGame"       Actions.CreateGame.action
+            1 -> buildTxBody "CancelGame"       Actions.CancelGame.action
+            2 -> buildTxBody "JoinGame"         Actions.JoinGame.action
+            3 -> buildTxBody "RunGame"          Actions.RunGame.action
+            4 -> buildTxBody "MintPlayerNFT"    Actions.MintPlayerNFT.action
+            _ -> error "Action Not available!"
+        liftIO $ withCfgProviders coreCfg (toIGreen "SubmitTx") $ signAndSubmitTx txBody
+        newConfig <- get >>= liftIO . updateConfig
+        put newConfig >> runDApp
 
 buildTxBody :: String -> (Config -> GYProviders -> IO GYTxBody) -> StateT Config IO GYTxBody
 buildTxBody namespace action = do

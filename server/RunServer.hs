@@ -1,7 +1,7 @@
 module RunServer (runServer) where
 
 import Web.Scotty               ( file, get, param, post, scotty, text )
-import Control.Concurrent       ( putMVar, readMVar, tryReadMVar, MVar )
+import Control.Concurrent       ( putMVar, readMVar, tryReadMVar, MVar, tryTakeMVar )
 import Control.Monad.IO.Class   ( liftIO )
 import Data.Text.Lazy           qualified as T
 
@@ -52,3 +52,8 @@ runServer usedAddrsVar changeAddrVar unsignedTxVar signedWitnessVar = scotty 300
         case witnessTxM of
             Just witnessTx -> text $ T.pack witnessTx
             Nothing -> text "No witness received yet"
+
+-- Reset all MVars
+    post "/reset-all" $ do
+        _ <- liftIO $ mapM_ tryTakeMVar [usedAddrsVar, changeAddrVar, unsignedTxVar, signedWitnessVar]
+        text "All MVars reset"

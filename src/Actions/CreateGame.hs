@@ -9,7 +9,7 @@ import  IOUtilities                 ( chooseIndex )
 import  DAppConfig                  ( Config (..) )
 import  DataTypes                   ( Player(BluePlayer), GameSettings(Settings) )
 import  Instances                   ()
-import  Constants                   ( thousand, classicBoard_S9DC3, million )
+import  Constants                   ( thousand, million, classicBoard_S5DC3 )
 import  Data.Set                    qualified as Set
 import  Scripts                     qualified
 
@@ -20,12 +20,12 @@ skeleton :: GYAssetClass -> GYAddress -> GYTxMonadNode (GYTxSkeleton 'PlutusV2)
 skeleton identifierNFT initialiseGameSCAddress = pure
     $ mustHaveOutput (GYTxOut initialiseGameSCAddress betAmount (Just (gameSettings , GYTxOutUseInlineDatum)) Nothing)
     where
-    -- betAmount is 100 ADA , turnDuration is 1 hour , and starting board is classicBoard_S9DC3
+    -- betAmount is 100 ADA , turnDuration is 1 hour , and starting board is classicBoard_S5DC3
         betAmount       = valueSingleton GYLovelace (100*million)
         gameSettings    = datumFromPlutusData $ Settings player turnDuration boardS0
         player          = BluePlayer nftSymbol nftName
         turnDuration    = POSIXTime 60*60*thousand
-        boardS0         = classicBoard_S9DC3
+        boardS0         = classicBoard_S5DC3
         AssetClass (nftSymbol, nftName) = assetClassToPlutus identifierNFT
 
 --------------------------------------------------------------------------------------------------------------------------- |

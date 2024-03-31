@@ -138,6 +138,7 @@ executable Hexxagon-Game-Server
                     , warp
                     , scotty
                     , http-conduit
+                    , req
                     , async
                     , text
                     , split
