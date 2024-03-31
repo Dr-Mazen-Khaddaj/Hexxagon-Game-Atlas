@@ -184,28 +184,3 @@ test-suite Hexxagon-Game-Atlas-test
                     , plutus-tx
                     , bytestring
                     , base16-bytestring
-
-executable hexxagon
-    import:           common
-    hs-source-dirs:   app
-    main-is:          hexxagon-main.hs
-    build-depends:    base
-                    , Hexxagon-Game-Atlas
-                    , ansi-terminal
-                    , directory
-                    , filepath
-                    , haskeline
-                    , time
-
-executable hexxBoardConfig
-    import:           common
-    hs-source-dirs:   app
-    main-is:          hexxBoardConfig-main.hs
-    build-depends:    base
-                    , Hexxagon-Game-Atlas
-                    , ansi-terminal
-                    , directory
-                    , filepath
-                    , haskeline
-                    , time
-

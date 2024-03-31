@@ -2,7 +2,6 @@ module MainFxs
   ( checkFinalPosition
   , checkInitialPosition
   , checkWinner
-  , destructureGame
   , fillBoard
   , makeMove
   , match
@@ -10,7 +9,6 @@ module MainFxs
   , noMoves
   , parseConfig
   , parseInput
-  , restructureGame
   , score
   , p2h
   , h2p
@@ -93,14 +91,14 @@ completeBoard h b = case noMoves h b of
 fillBoard :: Hexagon -> Board -> Board
 fillBoard h b@(Board mph) = Board . foldr (\x -> Map.insert x h) mph . concat $ (\x -> getNearbyPositions b x Empty 2) <$> (Map.keys $ Map.filter (== h) mph)
 
-makeMove :: Hexx -> Integer -> Maybe Hexx
-makeMove (Hexx pt (Move ip fp) w oc b@(Board mph)) d = case d of
-  1 -> Just $ Hexx (succ pt) (Move ip fp) Nothing oc $
+makeMove :: Hexx -> Move -> Integer -> Maybe Hexx
+makeMove (Hexx pt lm w oc b@(Board mph)) (Move ip fp) d = case d of
+  1 -> Just $ Hexx (succ pt) lm Nothing oc $
        Board $ foldr 
        (\p -> Map.insert p pt) 
        (Map.insert fp pt mph)
        (getNearbyPositions b fp (succ pt) 1)
-  2 -> Just $ Hexx (succ pt) (Move ip fp) Nothing oc $
+  2 -> Just $ Hexx (succ pt) lm Nothing oc $
        Board $ foldr 
        (\p -> Map.insert p pt) 
        (Map.insert fp pt $ Map.insert ip Empty mph)
@@ -138,44 +136,6 @@ parseInput s = case length $ words s of
          else Nothing
        _ -> Nothing
   _ -> Nothing
-
-destructureGame :: Hexx -> (Char, ((Integer, Integer), (Integer, Integer)), Char, Char, [((Integer, Integer), Char)])
-destructureGame (Hexx pt lm w oc (Board mph)) = 
-  ( toChar pt
-  , (\m -> (((\ip -> (getX ip, getY ip)) $ initialPosition m), ((\fp -> (getX fp, getY fp)) $ finalPosition m))) lm
-  , toWinChar w
-  , 'f'
-  , (\(p, c) -> ((getX p, getY p), toChar c)) <$> Map.toList mph
-  )
-    where
-      toWinChar w = case w of
-        Just Red   -> 'r'
-        Just Blue  -> 'b'
-        Just Empty -> 'e'
-        _ ->          'n'
-      toChar h = case h of 
-        Red  -> 'r'
-        Blue -> 'b'
-        _    -> 'e'
-
-restructureGame :: (Char, ((Integer, Integer), (Integer, Integer)), Char, Char, [((Integer, Integer), Char)]) -> Hexx
-restructureGame (pt, lm, w, oc, b) = 
-  Hexx
-    (toHex pt)
-    ((\((ipx, ipy), (fpx, fpy)) -> Move (Position ipx ipy) (Position fpx fpy)) lm)
-    (parseWin w ) 
-    False
-    (Board . Map.fromList $ (\((x,y), h) -> (Position x y, toHex h)) <$> b)
-      where
-        parseWin w = case w of
-          'r' -> Just Red
-          'b' -> Just Blue
-          'e' -> Just Empty
-          _   -> Nothing
-        toHex c = case c of
-          'r' -> Red
-          'b' -> Blue
-          _   -> Empty
 
 rBoard :: [((Integer, Integer), Char)] -> Board
 rBoard iic = Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c')) <$> iic
