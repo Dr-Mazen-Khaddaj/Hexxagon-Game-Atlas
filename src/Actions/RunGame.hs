@@ -45,15 +45,25 @@ skeleton runGameSC gameToRun authNFTRef runGame@(PlayTurn move) currentSlot = pu
         newGameState = Game nextPlayer (deadline + turnDuration) (makeMove move board)
         newGameInfo = datumFromPlutusData $ GameInfo players turnDuration newGameState
 
-skeleton runGameSC gameToRun authNFTRef TimeOut currentSlot = pure
-    $  mustHaveInput (GYTxIn gameToRunRef (GYTxInWitnessScript runGameSCInScript gameInfoGYDatum runGameGYRedeemer))
+skeleton runGameSC gameToEnd authNFTRef TimeOut currentSlot = pure
+    $  mustHaveInput (GYTxIn gameToEndRef (GYTxInWitnessScript runGameSCInScript gameInfoGYDatum runGameGYRedeemer))
     <> mustHaveInput (GYTxIn authNFTRef GYTxInWitnessKey)
     <> isInvalidBefore currentSlot
     where
-        gameToRunRef = utxoRef gameToRun
+        gameToEndRef = utxoRef gameToEnd
         runGameSCInScript = GYInScript $ Scripts.gyScriptToValidator runGameSC
-        gameInfoGYDatum = case utxoOutDatum gameToRun of GYOutDatumInline d -> d ; _ -> error "Game To Run has no Inline Datum!"
+        gameInfoGYDatum = case utxoOutDatum gameToEnd of GYOutDatumInline d -> d ; _ -> error "Game To End has no Inline Datum!"
         runGameGYRedeemer = redeemerFromPlutusData TimeOut
+
+skeleton runGameSC gameToEnd authNFTRef gameOver@(GameOver _) currentSlot = pure
+    $  mustHaveInput (GYTxIn gameToEndRef (GYTxInWitnessScript runGameSCInScript gameInfoGYDatum runGameGYRedeemer))
+    <> mustHaveInput (GYTxIn authNFTRef GYTxInWitnessKey)
+    <> isInvalidBefore currentSlot
+    where
+        gameToEndRef = utxoRef gameToEnd
+        runGameSCInScript = GYInScript $ Scripts.gyScriptToValidator runGameSC
+        gameInfoGYDatum = case utxoOutDatum gameToEnd of GYOutDatumInline d -> d ; _ -> error "Game To End has no Inline Datum!"
+        runGameGYRedeemer = redeemerFromPlutusData gameOver
 
 updateMetadataSkeleton :: GYScript 'PlutusV2 -> GYUTxO -> GYTxMonadNode (GYTxSkeleton 'PlutusV2)
 updateMetadataSkeleton refNFTManagerSC refNFTUTxO = pure
@@ -78,13 +88,15 @@ action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers 
                                 (utxosSize -> 0)    -> error "No Games available to Start!"
                                 xs                  -> selectUTxO xs
     let gameInfo        = gameInfoFromUTxO gameToRun
-        identifierNFT   = playerToGYAssetClass $ getPlayer'sTurn gameInfo.getGameState
-        authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
     runGame             <- playTurn gameInfo
     currentSlot         <- gyGetSlotOfCurrentBlock providers
     print runGame
     case runGame of
         GameOver winner -> do
+            let winnerNFT               = playerToGYAssetClass winner
+                authNFTRef              = case utxosToList $ filterUTxOs (utxoHasAssetClass winnerNFT) walletUTxOs of
+                                            (utxo:_) -> utxoRef utxo
+                                            _        -> error "Only the winner is eligible to claim the reward!"
             refNFTManagerSCScript       <- Scripts.refNFTManagerSC
             let refNFTManagerSCAddr     = Scripts.gyScriptToAddress refNFTManagerSCScript
                 GYToken refNFT_Symbol (GYTokenName name) = playerToGYAssetClass winner
@@ -96,7 +108,10 @@ action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers 
                                             , updateMetadataSkeleton refNFTManagerSCScript refNFTUTxO
                                             ]
 
-        _ -> runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame currentSlot
+        _ -> do
+            let identifierNFT   = playerToGYAssetClass $ getPlayer'sTurn gameInfo.getGameState
+                authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
+            runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame currentSlot
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers

@@ -64,8 +64,6 @@ library
                     , Actions.CancelGame
                     , Actions.JoinGame
                     , Actions.RunGame
-                    , Actions.GameOver
-                    , Actions.TimeOut
                     , Actions.MintPlayerNFT
 
                     , Extras
