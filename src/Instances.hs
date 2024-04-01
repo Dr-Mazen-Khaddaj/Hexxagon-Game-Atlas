@@ -97,7 +97,7 @@ showOrganizedBoard orientation mode = case orientation of
                 showHex Middle (Just (p,h)) = middleHex p h
                 showHex Bottom (Just (p,h)) = case (orientation,mode) of
                                                 (Edge,CoordsAndHexs)        -> bottomWithHex h
-                                                (Edge,SelectiveCoords ps)   -> if p `elem` ps then bottomWithHex h else bottomHex
+                                                (Edge,SelectiveCoords ps)   -> bottomWithHex h
                                                 _                           -> bottomHex
                 showHex _      Nothing      = noHex
                 concatMiddle (m1:m2:ms) = if last m1 == '|' then m1 <> concatMiddle (tail m2 : ms)
@@ -115,7 +115,7 @@ showOrganizedBoard orientation mode = case orientation of
                         CoordsAndHexs   -> "/" <> show (mod pos.getX 10) <> " " <> show (mod pos.getY 10) <> "\\   "
                         SelectiveCoords ps -> if pos `elem` ps
                                         then "/" <> show (mod pos.getX 10) <> " " <> show (mod pos.getY 10) <> "\\   "
-                                        else "/ " <> show hex <> " \\   "
+                                        else "/   \\   "
                     Vertex  -> case mode of
                         Clear           -> "|   |"
                         OnlyHexagons    -> "| " <> show hex <> " |"
@@ -124,9 +124,7 @@ showOrganizedBoard orientation mode = case orientation of
                         SelectiveCoords ps -> if pos `elem` ps
                                         then "|" <> show (mod pos.getX 10) <> show hex <> show (mod pos.getY 10) <> "|"
                                         else "| " <> show hex <> " |"
-                bottomWithHex hex = case hex of
-                    Empty   -> "\\___/   "
-                    _       -> "\\_" <> show hex <> "_/   "
+                bottomWithHex hex = "\\_" <> show hex <> "_/   "
                 hexSize = case orientation of
                     Edge    -> 4
                     Vertex  -> 2

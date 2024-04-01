@@ -67,19 +67,23 @@ import Instances
 
 playTurn :: GameInfo -> IO RunGame
 playTurn (GameInfo ps td (Game pt dl b)) = do
-  hexx <- hexxagon (p2h pt) b
-  case hexx of
-    Just (Hexx opt pt lm w ob b) -> do
-      posixtime <- getPOSIXTime
-      if   round posixtime * 1000 > dl 
-      then return TimeOut 
-      else
-        case w of
-          Just Red   -> return . GameOver $ h2p ps Red
-          Just Blue  -> return . GameOver $ h2p ps Blue
-          Just Empty -> return Draw
-          _ -> return $ PlayTurn lm
-    _ -> undefined
+  posixtime <- getPOSIXTime
+  if   round posixtime * 1000 > dl 
+  then return TimeOut 
+  else do
+    hexx <- hexxagon (p2h pt) b
+    case hexx of
+      Just (Hexx opt pt lm w ob b) -> do
+        posixtime <- getPOSIXTime
+        if   round posixtime * 1000 > dl 
+        then return TimeOut 
+        else
+          case w of
+            Just Red   -> return . GameOver $ h2p ps Red
+            Just Blue  -> return . GameOver $ h2p ps Blue
+            Just Empty -> return Draw
+            _ -> return $ PlayTurn lm
+      _ -> undefined
 
 hexxagonHelp :: InputT IO ()
 hexxagonHelp = do
@@ -304,5 +308,5 @@ testGI =
     3600000 $ 
     Game 
       (BluePlayer "6373" "tnb")
-      1911743228000 $ 
+      1211743228000 $ 
       rBoard $ read "[((5,6),'r'),((5,7),'e'),((5,8),'b'),((6,6),'b'),((6,7),'b'),((6,8),'b')]"
