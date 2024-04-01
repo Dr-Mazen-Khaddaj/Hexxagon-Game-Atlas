@@ -80,7 +80,8 @@ data Metadata           = Metadata  { getMetadata       :: AssocMap.Map BuiltinB
 ----------------------------------------------------------------------------------------------------------------------------
 
 data Hexx = Hexx
-  { playerTurn :: Hexagon
+  { ogPlayerTurn :: Hexagon
+  , playerTurn :: Hexagon
   , move :: Move
   , winner :: Maybe Hexagon
   , ogBoard :: Board

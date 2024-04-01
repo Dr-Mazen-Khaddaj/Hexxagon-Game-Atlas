@@ -63,7 +63,7 @@ checkFinalPosition (Board mph) m@(Move _ fp) = case Map.lookup fp mph of
   _ -> Nothing
 
 checkInitialPosition :: Hexx -> Position -> Maybe Position
-checkInitialPosition (Hexx pt lm w oc b@(Board mph)) ip = case Map.lookup ip mph of
+checkInitialPosition (Hexx opt pt lm w ob b@(Board mph)) ip = case Map.lookup ip mph of
   Just h  -> if   h == pt && length (concat $ getNearbyPositions b ip Empty <$> [1,2]) > 0
              then Just ip
              else Nothing
@@ -92,13 +92,13 @@ fillBoard :: Hexagon -> Board -> Board
 fillBoard h b@(Board mph) = Board . foldr (\x -> Map.insert x h) mph . concat $ (\x -> getNearbyPositions b x Empty 2) <$> (Map.keys $ Map.filter (== h) mph)
 
 makeMove :: Hexx -> Move -> Integer -> Maybe Hexx
-makeMove (Hexx pt lm w oc b@(Board mph)) (Move ip fp) d = case d of
-  1 -> Just $ Hexx (succ pt) lm Nothing oc $
+makeMove (Hexx opt pt lm w ob b@(Board mph)) (Move ip fp) d = case d of
+  1 -> Just $ Hexx opt (succ pt) lm Nothing ob $
        Board $ foldr 
        (\p -> Map.insert p pt) 
        (Map.insert fp pt mph)
        (getNearbyPositions b fp (succ pt) 1)
-  2 -> Just $ Hexx (succ pt) lm Nothing oc $
+  2 -> Just $ Hexx opt (succ pt) lm Nothing ob $
        Board $ foldr 
        (\p -> Map.insert p pt) 
        (Map.insert fp pt $ Map.insert ip Empty mph)
