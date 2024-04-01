@@ -77,13 +77,13 @@ data Metadata           = Metadata  { getMetadata       :: AssocMap.Map BuiltinB
                                     , getExtraData      :: Data
                                     }
 
-----------------------------------------------------------------------------------------------------------------------------
+-- Local
+data Hexx               = Hexx      { ogPlayerTurn      :: Hexagon
+                                    , playerTurn        :: Hexagon
+                                    , move              :: Move
+                                    , winner            :: Maybe Hexagon
+                                    , ogBoard           :: Board
+                                    , board             :: Board
+                                    } deriving stock Eq
 
-data Hexx = Hexx
-  { ogPlayerTurn :: Hexagon
-  , playerTurn :: Hexagon
-  , move :: Move
-  , winner :: Maybe Hexagon
-  , ogBoard :: Board
-  , board :: Board
-  } deriving Eq
+----------------------------------------------------------------------------------------------------------------------------

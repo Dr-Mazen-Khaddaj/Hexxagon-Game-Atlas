@@ -1,18 +1,17 @@
 module  GYUtilities ( valueHasAssetClass
                     , utxoHasAssetClass
-                    , getUTxOByNFT
+                    , getUTxOsByNFT
                     , getAssets
-                    , utxoHasAnyAsset
-                    , utxoGameHasAnyAsset
-                    , gameSettingsFromUTxO
+                    , availableToPlayer
                     , playerToGYAssetClass
+                    , fromUTxO
                     ) where
 
 import GeniusYield.Types (GYValue, GYAssetClass, valueAssets, GYAddress, GYUTxOs, GYUTxO (utxoValue), utxosToList, GYOutDatum (..), utxoOutDatum, datumToPlutus, assetClassFromPlutus)
 import Data.Set qualified as Set
 import GeniusYield.TxBuilder (GYTxQueryMonadNode, GYTxQueryMonad (utxosAtAddress))
 import DataTypes (Player(..), GameSettings (..), GameInfo (getGameState), GameState (getPlayer'sTurn))
-import PlutusLedgerApi.V2 (Datum(..), fromBuiltinData)
+import PlutusLedgerApi.V2 (Datum(..), fromBuiltinData, FromData)
 import PlutusLedgerApi.V1.Value (AssetClass(..))
 import Instances ()
 
@@ -22,38 +21,25 @@ valueHasAssetClass nft = Set.member nft . valueAssets
 utxoHasAssetClass :: GYAssetClass -> GYUTxO -> Bool
 utxoHasAssetClass nft = Set.member nft . valueAssets . utxoValue
 
--- change name to getUTxOsByNFT or make it return 1 UTxO
-getUTxOByNFT :: GYAddress -> GYAssetClass -> GYTxQueryMonadNode GYUTxOs
-getUTxOByNFT addr nft = utxosAtAddress addr (Just nft)
+getUTxOsByNFT :: GYAddress -> GYAssetClass -> GYTxQueryMonadNode GYUTxOs
+getUTxOsByNFT addr nft = utxosAtAddress addr (Just nft)
 
 getAssets :: GYUTxOs -> Set.Set GYAssetClass
 getAssets = mconcat . ((valueAssets . utxoValue) <$>) . utxosToList
 
--- Need to be renamed!
-utxoHasAnyAsset :: Set.Set GYAssetClass -> GYUTxO -> Bool
-utxoHasAnyAsset assets (gameSettingsFromUTxO -> Just (getPlayer1 -> BluePlayer cs tn)) =
-    case assetClassFromPlutus (AssetClass (cs,tn)) of
-        Right gyAssetClass -> Set.member gyAssetClass assets
-        Left e -> error (show e)
-utxoHasAnyAsset _ _ = False
+availableToPlayer :: Set.Set GYAssetClass -> GYUTxO -> Bool
+availableToPlayer assets (authNFTFromUTxO -> Just gyAssetClass) = Set.member gyAssetClass assets
+availableToPlayer _ _ = False
 
-gameSettingsFromUTxO :: GYUTxO -> Maybe GameSettings
-gameSettingsFromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = fromBuiltinData d
-gameSettingsFromUTxO (utxoOutDatum -> _) = Nothing
+authNFTFromUTxO :: GYUTxO -> Maybe GYAssetClass
+authNFTFromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = case fromBuiltinData @GameSettings d of
+    Just settings -> Just $ playerToGYAssetClass settings.getPlayer1
+    Nothing -> playerToGYAssetClass . getPlayer'sTurn . getGameState <$> fromBuiltinData d
+authNFTFromUTxO _ = Nothing
 
-utxoGameHasAnyAsset :: Set.Set GYAssetClass -> GYUTxO -> Bool
-utxoGameHasAnyAsset assets (player'sTurnFromUTxO -> player) =
-    case assetClassFromPlutus (AssetClass (cs,tn)) of
-        Right gyAssetClass -> Set.member gyAssetClass assets
-        Left e -> error (show e)
-        where
-            (cs,tn) = case player of Just (BluePlayer a b) -> (a,b)
-                                     Just (RedPlayer  a b) -> (a,b)
-                                     Nothing -> error "Can't get player's Turn From UTxO!"
-
-player'sTurnFromUTxO :: GYUTxO -> Maybe Player
-player'sTurnFromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = getPlayer'sTurn . getGameState <$> fromBuiltinData d
-player'sTurnFromUTxO (utxoOutDatum -> _) = Nothing
+fromUTxO :: FromData a => GYUTxO -> Maybe a
+fromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = fromBuiltinData d
+fromUTxO (utxoOutDatum -> _) = Nothing
 
 playerToGYAssetClass :: Player -> GYAssetClass
 playerToGYAssetClass player = case assetClassFromPlutus nft of

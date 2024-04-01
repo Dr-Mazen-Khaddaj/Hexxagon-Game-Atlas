@@ -45,12 +45,12 @@ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress = pure
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: Config -> GYProviders -> IO GYTxBody
+action :: Config -> GYProviders -> IO (Either [String] GYTxBody)
 action (Config coreCfg walletAddrs changeAddr _ _) providers = do
     Just (theUniqueTxOutRef ,_) <- query (utxosAtAddresses walletAddrs) >>= randomTxOutRef
     playerIdentifierMP          <- Scripts.playerIdentifierMP theUniqueTxOutRef
     refNFTManagerSCAddress      <- Scripts.gyScriptToAddress <$> Scripts.refNFTManagerSC
-    runTx $ skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress
+    Right <$> runTx (skeleton playerIdentifierMP theUniqueTxOutRef refNFTManagerSCAddress)
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers

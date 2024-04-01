@@ -31,13 +31,15 @@ skeleton identifierNFT initialiseGameSCAddress = pure
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: Config -> GYProviders -> IO GYTxBody
+action :: Config -> GYProviders -> IO (Either [String] GYTxBody)
 action (Config coreCfg walletAddrs changeAddr _ playerNFTs) providers = do
     initialiseGameSCAddress <- Scripts.gyScriptToAddress <$> Scripts.initialiseGameSC
-    identifierNFT <- case playerNFTs of (Set.size -> 0) -> error "No Game NFTs found! Please Mint an NFT!"
-                                        (Set.size -> 1) -> pure $ Set.elemAt 0 playerNFTs
-                                        _ -> putStrLn "Multiple NFTs found!" >> selectNFT playerNFTs
-    runTx $ skeleton identifierNFT initialiseGameSCAddress
+    identifierNFT <- case playerNFTs of (Set.size -> 0) -> pure Nothing
+                                        (Set.size -> 1) -> pure . Just $ Set.elemAt 0 playerNFTs
+                                        _ -> putStrLn "Multiple NFTs found!" >> Just <$> selectNFT playerNFTs
+    case identifierNFT of
+        Just nft -> Right <$> runTx (skeleton nft initialiseGameSCAddress)
+        Nothing -> pure $ Left ["No Game NFTs found! Please Mint an NFT!"]
     where
         networkID = cfgNetworkId coreCfg
         runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing

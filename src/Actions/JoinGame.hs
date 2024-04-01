@@ -9,7 +9,7 @@ import  PlutusLedgerApi.V2          ( POSIXTime )
 import  DAppConfig                  ( Config (..) )
 import  DataTypes                   ( Initialization (Add), Player (RedPlayer), GameInfo (GameInfo), GameState (Game), GameSettings (..) )
 import  Instances                   ()
-import  GYUtilities                 ( utxoHasAnyAsset )
+import  GYUtilities                 ( availableToPlayer )
 import  IOUtilities                 ( chooseIndex )
 import  Data.Set                    qualified as Set
 import  Scripts                     qualified
@@ -37,21 +37,25 @@ skeleton initialiseGameSC gameToStart identifierNFT runGameSCAddress currentTime
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: Config -> GYProviders -> IO GYTxBody
+action :: Config -> GYProviders -> IO (Either [String] GYTxBody)
 action (Config coreCfg walletAddrs changeAddr _ playerNFTs) providers = do
     initialiseGameSCScript  <- Scripts.initialiseGameSC
     initialiseGameSCUTxOs   <- query $ utxosAtAddress (Scripts.gyScriptToAddress initialiseGameSCScript) Nothing
-    gameToStart             <- case filterUTxOs (utxoHasAnyAsset playerNFTs) initialiseGameSCUTxOs of
-                                    (utxosSize -> 0) -> error "No Games available to Start!"
-                                    xs -> selectUTxO xs
+    gameToStart             <- case filterUTxOs (availableToPlayer playerNFTs) initialiseGameSCUTxOs of
+                                    (utxosSize -> 0) -> pure Nothing
+                                    xs -> Just <$> selectUTxO xs
     runGameSCAddress        <- Scripts.gyScriptToAddress <$> Scripts.runGameSC
     identifierNFT           <- case playerNFTs of
-                                    (Set.size -> 0) -> error "No Game NFTs found! Please Mint an NFT!"
-                                    (Set.size -> 1) -> pure $ Set.elemAt 0 playerNFTs
-                                    _               -> putStrLn "Multiple NFTs found!" >> selectNFT playerNFTs
+                                    (Set.size -> 0) -> pure Nothing
+                                    (Set.size -> 1) -> pure . Just $ Set.elemAt 0 playerNFTs
+                                    _               -> putStrLn "Multiple NFTs found!" >> Just <$> selectNFT playerNFTs
     currentSlot             <- gyGetSlotOfCurrentBlock providers
     currentTime             <- timeToPlutus <$> query (slotToBeginTime currentSlot)
-    runTx $ skeleton initialiseGameSCScript gameToStart identifierNFT runGameSCAddress currentTime currentSlot
+    case (gameToStart,identifierNFT) of
+        (Just game , Just nft) -> Right <$> runTx (skeleton initialiseGameSCScript game nft runGameSCAddress currentTime currentSlot)
+        (Nothing   , Just _  ) -> pure $ Left ["No Games available to Start!"]
+        (Just _    , Nothing ) -> pure $ Left ["No Game NFTs found! Please Mint an NFT!"]
+        (Nothing   , Nothing ) -> pure $ Left ["No Games available to Start!" , "No Game NFTs found! Please Mint an NFT!"]
     where
         networkID = cfgNetworkId coreCfg
         query :: GYTxQueryMonadNode a -> IO a
@@ -59,7 +63,7 @@ action (Config coreCfg walletAddrs changeAddr _ playerNFTs) providers = do
         runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
 
 selectUTxO :: GYUTxOs -> IO GYUTxO
-selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "UTxO" (utxosRefs utxos)
+selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "Game" (utxosRefs utxos)
 
 selectNFT :: Set.Set GYAssetClass -> IO GYAssetClass
 selectNFT (Set.toList -> nfts) = (!!) nfts <$> chooseIndex "NFT" nfts

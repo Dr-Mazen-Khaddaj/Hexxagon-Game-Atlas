@@ -7,7 +7,7 @@ import  Data.Maybe      ( fromMaybe )
 import  DAppConfig      ( Config (..) )
 import  DataTypes       ( Initialization (Withdraw), GameSettings (getPlayer1) )
 import  Instances       ()
-import  GYUtilities     ( utxoHasAnyAsset, utxoHasAssetClass, gameSettingsFromUTxO, playerToGYAssetClass )
+import  GYUtilities     ( availableToPlayer, utxoHasAssetClass, playerToGYAssetClass, fromUTxO )
 import  IOUtilities     ( chooseIndex )
 import  Scripts         qualified
 
@@ -27,23 +27,27 @@ skeleton initialiseGameSC gameToCancel authNFTRef = pure
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
 
-action :: Config -> GYProviders -> IO GYTxBody
+action :: Config -> GYProviders -> IO (Either [String] GYTxBody)
 action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers = do
     initialiseGameSCScript  <- Scripts.initialiseGameSC
     initialiseGameSCUTxOs   <- query $ utxosAtAddress (Scripts.gyScriptToAddress initialiseGameSCScript) Nothing
-    gameToCancel            <- case filterUTxOs (utxoHasAnyAsset playerNFTs) initialiseGameSCUTxOs of
-                                (utxosSize -> 0) -> error "No Games available to Cancel!"
-                                xs -> selectUTxO xs
-    let identifierNFT = playerToGYAssetClass . getPlayer1 $ fromMaybe (error "Can't get GameSettings!") (gameSettingsFromUTxO gameToCancel)
-        authNFTRef = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
-    runTx $ skeleton initialiseGameSCScript gameToCancel authNFTRef
+    gameToCancel            <- case filterUTxOs (availableToPlayer playerNFTs) initialiseGameSCUTxOs of
+                                (utxosSize -> 0) -> pure Nothing
+                                xs -> Just <$> selectUTxO xs
+    case gameToCancel of
+        Just game -> do
+            let gameSettings    = fromMaybe (error "Can't get GameSettings from UTxO!") (fromUTxO @GameSettings game)
+                identifierNFT   = playerToGYAssetClass gameSettings.getPlayer1
+                authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
+            Right <$> runTx (skeleton initialiseGameSCScript game authNFTRef)
+        Nothing -> pure $ Left ["No Games available to Cancel!"]
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
         runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
 
 selectUTxO :: GYUTxOs -> IO GYUTxO
-selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "UTxO" (utxosRefs utxos)
+selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "Game" (utxosRefs utxos)
 
 --------------------------------------------------------------------------------------------------------------------------- |
 --------------------------------------------------------------------------------------------------------------------------- |
