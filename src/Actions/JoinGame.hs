@@ -6,10 +6,11 @@ import  GeniusYield.GYConfig
 import  PlutusTx.IsData             ( UnsafeFromData(unsafeFromBuiltinData) )
 import  PlutusLedgerApi.V1.Value    ( AssetClass(..) )
 import  PlutusLedgerApi.V2          ( POSIXTime )
+import  Data.Maybe                  ( isJust )
 import  DAppConfig                  ( Config (..) )
 import  DataTypes                   ( Initialization (Add), Player (RedPlayer), GameInfo (GameInfo), GameState (Game), GameSettings (..) )
 import  Instances                   ()
-import  GYUtilities                 ( availableToPlayer )
+import  GYUtilities                 ( fromUTxO )
 import  IOUtilities                 ( chooseIndex )
 import  Data.Set                    qualified as Set
 import  Scripts                     qualified
@@ -18,19 +19,19 @@ import  Scripts                     qualified
 ------------------------------------------------- | Transaction Skeleton | ------------------------------------------------ |
 
 skeleton :: GYScript 'PlutusV2 -> GYUTxO -> GYAssetClass -> GYAddress -> POSIXTime -> GYSlot -> GYTxMonadNode (GYTxSkeleton 'PlutusV2)
-skeleton initialiseGameSC gameToStart identifierNFT runGameSCAddress currentTime currentSlot = pure
+skeleton initialiseGameSC gameToJoin identifierNFT runGameSCAddress currentTime currentSlot = pure
     $  mustHaveInput (GYTxIn gameToStartRef (GYTxInWitnessScript initialiseGameSCInScript gameSettingsGYDatum addPlayer))
     <> mustHaveOutput (GYTxOut runGameSCAddress totalBet (Just (gameInfo , GYTxOutUseInlineDatum)) Nothing)
     <> isInvalidBefore currentSlot
     where
-        gameToStartRef = utxoRef gameToStart
+        gameToStartRef = utxoRef gameToJoin
         initialiseGameSCInScript = GYInScript $ Scripts.gyScriptToValidator initialiseGameSC
-        gameSettingsGYDatum = case utxoOutDatum gameToStart of GYOutDatumInline d -> d ; _ -> error "Game To Start has no Inline Datum!"
+        gameSettingsGYDatum = case utxoOutDatum gameToJoin of GYOutDatumInline d -> d ; _ -> error "Game To Join has no Inline Datum!"
         gameSettings = unsafeFromBuiltinData @GameSettings $ datumToPlutus' gameSettingsGYDatum
         addPlayer = redeemerFromPlutusData (Add player)
         player = RedPlayer nftSymbol nftName
         AssetClass (nftSymbol, nftName) = assetClassToPlutus identifierNFT
-        totalBet = gameToStart.utxoValue <> gameToStart.utxoValue
+        totalBet = gameToJoin.utxoValue <> gameToJoin.utxoValue
         gameInfo = datumFromPlutusData $ GameInfo [gameSettings.getPlayer1, player] gameSettings.getTurnDuration gameState
         gameState = Game player (currentTime + gameSettings.getTurnDuration) gameSettings.getBoardS0
 
@@ -41,7 +42,7 @@ action :: Config -> GYProviders -> IO (Either [String] GYTxBody)
 action (Config coreCfg walletAddrs changeAddr _ playerNFTs) providers = do
     initialiseGameSCScript  <- Scripts.initialiseGameSC
     initialiseGameSCUTxOs   <- query $ utxosAtAddress (Scripts.gyScriptToAddress initialiseGameSCScript) Nothing
-    gameToStart             <- case filterUTxOs (availableToPlayer playerNFTs) initialiseGameSCUTxOs of
+    gameToJoin              <- case filterUTxOs validUTxO initialiseGameSCUTxOs of
                                     (utxosSize -> 0) -> pure Nothing
                                     xs -> Just <$> selectUTxO xs
     runGameSCAddress        <- Scripts.gyScriptToAddress <$> Scripts.runGameSC
@@ -51,11 +52,11 @@ action (Config coreCfg walletAddrs changeAddr _ playerNFTs) providers = do
                                     _               -> putStrLn "Multiple NFTs found!" >> Just <$> selectNFT playerNFTs
     currentSlot             <- gyGetSlotOfCurrentBlock providers
     currentTime             <- timeToPlutus <$> query (slotToBeginTime currentSlot)
-    case (gameToStart,identifierNFT) of
+    case (gameToJoin,identifierNFT) of
         (Just game , Just nft) -> Right <$> runTx (skeleton initialiseGameSCScript game nft runGameSCAddress currentTime currentSlot)
-        (Nothing   , Just _  ) -> pure $ Left ["No Games available to Start!"]
+        (Nothing   , Just _  ) -> pure $ Left ["No Games available to Join!"]
         (Just _    , Nothing ) -> pure $ Left ["No Game NFTs found! Please Mint an NFT!"]
-        (Nothing   , Nothing ) -> pure $ Left ["No Games available to Start!" , "No Game NFTs found! Please Mint an NFT!"]
+        (Nothing   , Nothing ) -> pure $ Left ["No Games available to Join!" , "No Game NFTs found! Please Mint an NFT!"]
     where
         networkID = cfgNetworkId coreCfg
         query :: GYTxQueryMonadNode a -> IO a
@@ -67,6 +68,9 @@ selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "Game" (utxosRefs ut
 
 selectNFT :: Set.Set GYAssetClass -> IO GYAssetClass
 selectNFT (Set.toList -> nfts) = (!!) nfts <$> chooseIndex "NFT" nfts
+
+validUTxO :: GYUTxO -> Bool
+validUTxO = isJust . fromUTxO @GameSettings
 
 --------------------------------------------------------------------------------------------------------------------------- |
 --------------------------------------------------------------------------------------------------------------------------- |
