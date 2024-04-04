@@ -3,17 +3,21 @@ module  GYUtilities ( valueHasAssetClass
                     , getUTxOsByNFT
                     , getAssets
                     , availableToPlayer
+                    , authNFTFromUTxO
+                    , regNFTsFromUTxO
+                    , oppRegNFTFromUTxO
                     , playerToGYAssetClass
                     , fromUTxO
                     ) where
 
-import GeniusYield.Types (GYValue, GYAssetClass, valueAssets, GYAddress, GYUTxOs, GYUTxO (utxoValue), utxosToList, GYOutDatum (..), utxoOutDatum, datumToPlutus, assetClassFromPlutus)
-import Data.Set qualified as Set
-import GeniusYield.TxBuilder (GYTxQueryMonadNode, GYTxQueryMonad (utxosAtAddress))
-import DataTypes (Player(..), GameSettings (..), GameInfo (getGameState), GameState (getPlayer'sTurn))
-import PlutusLedgerApi.V2 (Datum(..), fromBuiltinData, FromData)
+import GeniusYield.Types
+import GeniusYield.TxBuilder    (GYTxQueryMonadNode, GYTxQueryMonad (utxosAtAddress))
+import PlutusLedgerApi.V2       (Datum(..), fromBuiltinData, FromData)
 import PlutusLedgerApi.V1.Value (AssetClass(..))
-import Instances ()
+import DataTypes                (Player(..), GameSettings (..), GameInfo (..), GameState (..))
+import Instances                ()
+import Data.Set                 qualified as Set
+import Data.List                qualified as List
 
 valueHasAssetClass :: GYAssetClass -> GYValue -> Bool
 valueHasAssetClass nft = Set.member nft . valueAssets
@@ -36,6 +40,17 @@ authNFTFromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = 
     Just settings -> Just $ playerToGYAssetClass settings.getPlayer1
     Nothing -> playerToGYAssetClass . getPlayer'sTurn . getGameState <$> fromBuiltinData d
 authNFTFromUTxO _ = Nothing
+
+regNFTsFromUTxO :: GYUTxO -> Maybe [GYAssetClass]
+regNFTsFromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = fmap playerToGYAssetClass . getPlayers <$> fromBuiltinData d
+regNFTsFromUTxO _ = Nothing
+
+oppRegNFTFromUTxO :: GYUTxO -> Maybe GYAssetClass
+oppRegNFTFromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum (fromBuiltinData @GameInfo -> Just gameInfo))) =
+    case List.delete gameInfo.getGameState.getPlayer'sTurn gameInfo.getPlayers of
+        [p] -> Just $ playerToGYAssetClass p
+        _   -> Nothing
+oppRegNFTFromUTxO _ = Nothing
 
 fromUTxO :: FromData a => GYUTxO -> Maybe a
 fromUTxO (utxoOutDatum -> GYOutDatumInline (datumToPlutus -> Datum d)) = fromBuiltinData d

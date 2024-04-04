@@ -1,4 +1,4 @@
-module MainFxs 
+module MainFxs
   ( checkFinalPosition
   , checkInitialPosition
   , checkWinner
@@ -13,14 +13,14 @@ module MainFxs
   , p2h
   , h2p
   , rBoard
+  , checkGameStatus
   ) where
 
-import Data.Char 
+import Data.Char
   ( digitToInt
   , isDigit
-  , toLower
-  ) 
-import DataTypes 
+  )
+import DataTypes
   ( Block
   , Board(..)
   , Hexx(..)
@@ -32,27 +32,24 @@ import DataTypes
   , GameState(..)
   , RunGame(..)
   )
-import UtilityFxs 
+import UtilityFxs
   ( distance
   , getNearbyPositions
   )
 import PlutusTx.AssocMap qualified as Map
-import  PlutusLedgerApi.V2 
+import  PlutusLedgerApi.V2
   ( POSIXTime
   )
 import Data.List (isPrefixOf)
 
 checkGameStatus :: POSIXTime -> GameInfo -> Maybe RunGame
 checkGameStatus epocht (GameInfo ps _ (Game _ dl b)) =
-  case epocht > dl of
-    True -> Just TimeOut
-    _ -> case checkWinner b of
-      Just (Red  , _) -> Just . GameOver $ h2p ps Red
-      Just (Blue , _) -> Just . GameOver $ h2p ps Blue
-      Just (Empty, _) -> Just Draw
-      _ -> Nothing
-    _ -> Nothing
-  
+  case checkWinner b of
+  Just (Red  , _) -> Just . GameOver $ h2p ps Red
+  Just (Blue , _) -> Just . GameOver $ h2p ps Blue
+  Just (Empty, _) -> Just Draw
+  _ -> if epocht > dl then Just TimeOut else Nothing
+
 p2h :: Player -> Hexagon
 p2h p = case p of
   RedPlayer _ _ -> Red
@@ -60,7 +57,7 @@ p2h p = case p of
 
 h2p :: [Player] -> Hexagon -> Player
 h2p ps p = case p of
-  Red  -> case head ps of 
+  Red  -> case head ps of
     RedPlayer  cs tn -> RedPlayer  cs tn
     _ -> last ps
   _    -> case head ps of
@@ -76,7 +73,7 @@ checkFinalPosition :: Board -> Move -> Maybe (Position, Integer)
 checkFinalPosition (Board mph) m@(Move _ fp) = case Map.lookup fp mph of
   Just Empty -> case distance m of
     1 -> Just (fp, 1)
-    2 -> Just (fp, 2)         
+    2 -> Just (fp, 2)
     _ -> Nothing
   _ -> Nothing
 
@@ -102,8 +99,8 @@ checkWinner b@(Board mph)
   | otherwise = Nothing
 
 completeBoard :: Hexagon -> Board -> Board
-completeBoard h b = case noMoves h b of  
-  False -> completeBoard h $ fillBoard h b 
+completeBoard h b = case noMoves h b of
+  False -> completeBoard h $ fillBoard h b
   _     -> b
 
 fillBoard :: Hexagon -> Board -> Board
@@ -112,13 +109,13 @@ fillBoard h b@(Board mph) = Board . foldr (\x -> Map.insert x h) mph . concat $ 
 makeMove :: Hexx -> Move -> Integer -> Maybe Hexx
 makeMove (Hexx opt pt lm w ob b@(Board mph)) (Move ip fp) d = case d of
   1 -> Just $ Hexx opt (succ pt) lm Nothing ob $
-       Board $ foldr 
-       (\p -> Map.insert p pt) 
+       Board $ foldr
+       (\p -> Map.insert p pt)
        (Map.insert fp pt mph)
        (getNearbyPositions b fp (succ pt) 1)
   2 -> Just $ Hexx opt (succ pt) lm Nothing ob $
-       Board $ foldr 
-       (\p -> Map.insert p pt) 
+       Board $ foldr
+       (\p -> Map.insert p pt)
        (Map.insert fp pt $ Map.insert ip Empty mph)
        (getNearbyPositions b fp (succ pt) 1)
   _ -> Nothing
@@ -128,10 +125,10 @@ match s s' = isPrefixOf (head $ words s) s'
 
 modifyBoard :: Board -> [Either Position Block] -> Board
 modifyBoard b mods = Board $ foldr modifyBoard' b' mods
-   where                                                                           
+   where
      (Board b') = b
-     modifyBoard' (Left   position) = Map.delete position                                                      
-     modifyBoard' (Right (pos,hex)) = Map.insert pos hex 
+     modifyBoard' (Left   position) = Map.delete position
+     modifyBoard' (Right (pos,hex)) = Map.insert pos hex
 
 noMoves :: Hexagon -> Board -> Bool
 noMoves h b@(Board mph) = null . concat . concat $ (\x -> getNearbyPositions b x Empty <$> [1,2]) <$> (Map.keys $ Map.filter (== h) mph)
@@ -140,27 +137,27 @@ parseConfig :: [String] -> [(Integer,Integer)]
 parseConfig = fmap (\s -> (toInteger . digitToInt $ head s, toInteger . digitToInt $ last s)) <$> filter (\s -> all (== True) (fmap isDigit s) && length s == 2)
 
 parseInput :: String -> Maybe Position
-parseInput s = case length $ words s of 
+parseInput s = case length $ words s of
   1 -> case s of
-       (x:y:[]) -> 
-         if   all isDigit [x] && all isDigit [y] 
-         then Just $ Position (read [x]) (read [y]) 
+       (x:y:[]) ->
+         if   all isDigit [x] && all isDigit [y]
+         then Just $ Position (read [x]) (read [y])
          else Nothing
        _ -> Nothing
   2 -> case words s of
-       [x,y] -> 
-         if   all isDigit x && all isDigit y 
-         then Just $ Position (read x) (read y) 
+       [x,y] ->
+         if   all isDigit x && all isDigit y
+         then Just $ Position (read x) (read y)
          else Nothing
        _ -> Nothing
   _ -> Nothing
 
 rBoard :: [((Integer, Integer), Char)] -> Board
 rBoard iic = Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c')) <$> iic
-  where                                                    
-    charToHex c' = case c' of                               
-      'r' -> Red                                                
-      'b' -> Blue      
+  where
+    charToHex c' = case c' of
+      'r' -> Red
+      'b' -> Blue
       _   -> Empty
 
 score :: Board -> (Int, Int)

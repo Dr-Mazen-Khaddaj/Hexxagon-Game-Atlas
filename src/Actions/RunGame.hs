@@ -9,11 +9,13 @@ import  DAppConfig                  ( Config (..) )
 import  DataTypes                   ( GameInfo (..), GameState (..), RunGame (..), Metadata (..), Player )
 import  Instances                   ()
 import  UtilityFxs                  ( makeMove, bytesFromHex )
-import  GYUtilities                 ( playerToGYAssetClass, getUTxOsByNFT, utxoHasAssetClass, availableToPlayer, fromUTxO, valueHasAssetClass )
+import  GYUtilities                 hiding (availableToPlayer)
 import  IOUtilities                 ( chooseIndex )
 import  IOFxs                       ( playTurn )
+import  MainFxs                     ( checkGameStatus )
 import  Data.Maybe                  ( fromMaybe )
 import  Scripts                     qualified
+import  Data.Set                    qualified as Set
 import  Data.List                   qualified as List
 import  PlutusTx.AssocMap           qualified as AssocMap
 import  Data.ByteString             qualified as BS
@@ -84,47 +86,61 @@ updateMetadataSkeleton refNFTManagerSC refNFTUTxO = pure
 
 --------------------------------------------------------------------------------------------------------------------------- |
 -------------------------------------------------- | Action Definition | -------------------------------------------------- |
--- // registeredNFTs
+
 action :: Config -> GYProviders -> IO (Either [String] GYTxBody)
 action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers = do
     runGameSCScript     <- Scripts.runGameSC
     runGameSCUTxOs      <- query $ utxosAtAddress (Scripts.gyScriptToAddress runGameSCScript) Nothing
-    case filterUTxOs (availableToPlayer playerNFTs) runGameSCUTxOs of -- !!! Not all casses
+    currentTime         <- timeToPlutus <$> getCurrentGYTime
+    let availableToPlayer :: GYUTxO -> Bool
+        availableToPlayer utxo = case fromUTxO @GameInfo utxo >>= checkGameStatus currentTime of
+            Just TimeOut    -> case oppRegNFTFromUTxO utxo  of  Just regNFT -> Set.member regNFT playerNFTs
+                                                                Nothing -> False
+            Just Draw       -> case regNFTsFromUTxO utxo    of  Just regNFTs -> any (`Set.member` playerNFTs) regNFTs
+                                                                Nothing -> False
+            Nothing         -> case authNFTFromUTxO utxo    of  Just authNFT -> Set.member authNFT playerNFTs
+                                                                Nothing -> False
+            Just (GameOver winner) -> Set.member (playerToGYAssetClass winner) playerNFTs
+            _ -> False
+    case filterUTxOs availableToPlayer runGameSCUTxOs of
         (utxosSize -> 0) -> pure $ Left ["No Games available to Start!"]
-        xs -> Right <$> do
-            gameToRun       <- selectUTxO xs
-            let gameInfo    = gameInfoFromUTxO gameToRun
-            runGame         <- playTurn gameInfo
-            currentSlot     <- gyGetSlotOfCurrentBlock providers
-            print runGame
-            case runGame of
-                Draw -> do
-                    let registeredNFTs      = playerToGYAssetClass <$> gameInfo.getPlayers
-                        authNFTUTxO         = head . utxosToList $ filterUTxOs (holdsRegNFT registeredNFTs) walletUTxOs
-                        authNFTRef          = utxoRef authNFTUTxO
-                        registeredPlayer    = head $ filter (\ p -> valueHasAssetClass (playerToGYAssetClass p) (utxoValue authNFTUTxO)) gameInfo.getPlayers
-                    runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame (Just registeredPlayer) currentSlot
-                GameOver winner -> do
-                    let winnerNFT               = playerToGYAssetClass winner
-                        authNFTRef              = case utxosToList $ filterUTxOs (utxoHasAssetClass winnerNFT) walletUTxOs of
-                                                    (utxo:_) -> utxoRef utxo
-                                                    _        -> error "Only the winner is eligible to claim the reward!"
-                    refNFTManagerSCScript       <- Scripts.refNFTManagerSC
-                    let refNFTManagerSCAddr     = Scripts.gyScriptToAddress refNFTManagerSCScript
-                        refNFT = case playerToGYAssetClass winner of
-                            GYToken symbol (GYTokenName name) ->
-                                let refNFTLabel = bytesFromHex "000643b0"
-                                    refNFTName  = GYTokenName $ refNFTLabel <> BS.drop 4 name
-                                in  GYToken symbol refNFTName
-                            _ -> error "Invalid NFT!"
-                    [refNFTUTxO]                <- utxosToList <$> query (getUTxOsByNFT refNFTManagerSCAddr refNFT)
-                    runTx $ mconcat <$> sequence    [ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
-                                                    , updateMetadataSkeleton refNFTManagerSCScript refNFTUTxO
-                                                    ]
-                _ -> do
-                    let identifierNFT   = playerToGYAssetClass $ getPlayer'sTurn gameInfo.getGameState
-                        authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
-                    runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
+        xs -> do
+            gameToRun <- selectUTxO xs
+            let gameInfo = gameInfoFromUTxO gameToRun
+            playTurn gameInfo >>= \case
+                Nothing -> pure $ Left ["Intentional Exit"]
+                Just runGame -> Right <$> do
+                    currentSlot <- gyGetSlotOfCurrentBlock providers
+                    print runGame
+                    case runGame of
+                        Draw -> do
+                            let registeredNFTs      = playerToGYAssetClass <$> gameInfo.getPlayers
+                                authNFTUTxO         = head . utxosToList $ filterUTxOs (holdsRegNFT registeredNFTs) walletUTxOs
+                                authNFTRef          = utxoRef authNFTUTxO
+                                registeredPlayer    = head $ filter (\ p -> valueHasAssetClass (playerToGYAssetClass p) (utxoValue authNFTUTxO)) gameInfo.getPlayers
+                            case gameInfo.getPlayers of
+                                [_] -> runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
+                                _   -> runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame (Just registeredPlayer) currentSlot
+                        GameOver (playerToGYAssetClass -> winnerNFT) -> do
+                            let authNFTRef = case utxosToList $ filterUTxOs (utxoHasAssetClass winnerNFT) walletUTxOs of
+                                                (utxo:_) -> utxoRef utxo
+                                                _        -> error "Only the winner is eligible to claim the reward!"
+                                refNFT = case winnerNFT of
+                                    GYToken symbol (GYTokenName name) ->
+                                        let refNFTLabel = bytesFromHex "000643b0"
+                                            refNFTName  = GYTokenName $ refNFTLabel <> BS.drop 4 name
+                                        in  GYToken symbol refNFTName
+                                    _ -> error "Invalid NFT!"
+                            refNFTManagerSCScript <- Scripts.refNFTManagerSC
+                            let refNFTManagerSCAddr = Scripts.gyScriptToAddress refNFTManagerSCScript
+                            [refNFTUTxO] <- utxosToList <$> query (getUTxOsByNFT refNFTManagerSCAddr refNFT)
+                            runTx $ mconcat <$> sequence    [ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
+                                                            , updateMetadataSkeleton refNFTManagerSCScript refNFTUTxO
+                                                            ]
+                        _ -> do
+                            let identifierNFT   = playerToGYAssetClass $ getPlayer'sTurn gameInfo.getGameState
+                                authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
+                            runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
