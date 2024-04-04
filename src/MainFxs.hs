@@ -28,13 +28,31 @@ import DataTypes
   , Move(..)
   , Position(..)
   , Player(..)
+  , GameInfo(..)
+  , GameState(..)
+  , RunGame(..)
   )
 import UtilityFxs 
   ( distance
   , getNearbyPositions
   )
 import PlutusTx.AssocMap qualified as Map
+import  PlutusLedgerApi.V2 
+  ( POSIXTime
+  )
+import Data.List (isPrefixOf)
 
+checkGameStatus :: POSIXTime -> GameInfo -> Maybe RunGame
+checkGameStatus epocht (GameInfo ps _ (Game _ dl b)) =
+  case epocht > dl of
+    True -> Just TimeOut
+    _ -> case checkWinner b of
+      Just (Red  , _) -> Just . GameOver $ h2p ps Red
+      Just (Blue , _) -> Just . GameOver $ h2p ps Blue
+      Just (Empty, _) -> Just Draw
+      _ -> Nothing
+    _ -> Nothing
+  
 p2h :: Player -> Hexagon
 p2h p = case p of
   RedPlayer _ _ -> Red
@@ -106,7 +124,7 @@ makeMove (Hexx opt pt lm w ob b@(Board mph)) (Move ip fp) d = case d of
   _ -> Nothing
 
 match :: String -> String -> Bool
-match s s' = (toLower <$> (head $ words s)) == s' || (toLower <$> (head $ words s)) == [head s']
+match s s' = isPrefixOf (head $ words s) s'
 
 modifyBoard :: Board -> [Either Position Block] -> Board
 modifyBoard b mods = Board $ foldr modifyBoard' b' mods
