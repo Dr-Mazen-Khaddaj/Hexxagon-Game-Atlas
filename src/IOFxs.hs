@@ -33,6 +33,7 @@ import MainFxs
   , h2p
   , p2h
   , rBoard
+  , checkGameStatus
   )
 import System.Console.ANSI 
   ( ColorIntensity(..)
@@ -71,32 +72,24 @@ import Data.List
   ( inits
   )
 
---playTurn :: GameInfo -> IO RunGame
---playTurn gi'' = do
---  gi' <- playTurn' gi''
---  case gi' of 
---    Just gi -> return gi
---    _       -> undefined
-
 playTurn :: GameInfo -> IO (Maybe RunGame)
-playTurn (GameInfo ps td (Game pt dl b)) = do
-  posixtime <- getPOSIXTime
-  if   round posixtime * 1000 > dl 
-  then return $ Just TimeOut 
-  else do
-    hexx <- hexxagon (p2h pt) b
-    case hexx of
-      Just (Hexx opt pt lm w ob b) -> do
-        posixtime <- getPOSIXTime
-        if   round posixtime * 1000 > dl 
-        then return $ Just TimeOut 
-        else
+playTurn gi@(GameInfo ps td (Game pt dl b)) = do
+  epocht <- getPOSIXTime
+  case checkGameStatus (round epocht * 1000) gi of
+    Nothing -> do 
+      hexx <- hexxagon (p2h pt) b
+      case hexx of
+        Just (Hexx _ _ lm w _ _) -> do
+          epocht <- getPOSIXTime
           case w of
             Just Red   -> return . Just . GameOver $ h2p ps Red
             Just Blue  -> return . Just . GameOver $ h2p ps Blue
             Just Empty -> return $ Just Draw
-            _ -> return . Just $ PlayTurn lm
-      _ -> return Nothing
+            _ -> if   round epocht * 1000 > dl 
+                 then return $ Just TimeOut 
+                 else return . Just $ PlayTurn lm
+        _ -> return Nothing
+    _ -> return $ checkGameStatus (round epocht * 1000) gi
 
 hexxagonHelp :: InputT IO ()
 hexxagonHelp = do
@@ -132,21 +125,21 @@ checkWinnerIO g@(Hexx opt pt lm w ob b) = case checkWinner b of
                            s <- getInputLine "   "
                            case s of
                              Just [] -> checkWinnerIO $ Hexx opt pt lm w ob b'
-                             Just s' | s' == "finalize" || (any (== True) $ match s' <$> optionsList) -> options s' $ Hexx opt pt lm w ob b'
+                             Just s' | any (== True) $ match s' <$> optionsList -> options s' $ Hexx opt pt lm w ob b'
                              _ -> checkWinnerIO $ Hexx opt pt lm (Just Red) ob b'
   Just (Blue, b')  -> if lm == fm then return . Just $ Hexx opt pt lm (Just Blue) ob b else
                         do screenWinner $ Hexx opt pt lm (Just Blue) ob b'; _ <- return . Just $ Hexx opt pt lm w ob b'
                            s <- getInputLine "   "
                            case s of
                              Just [] -> checkWinnerIO $ Hexx opt pt lm w ob b'
-                             Just s' | s' == "finalize" || (any (== True) $ match s' <$> optionsList) -> options s' $ Hexx opt pt lm w ob b'
+                             Just s' | any (== True) $ match s' <$> optionsList -> options s' $ Hexx opt pt lm w ob b'
                              _ -> checkWinnerIO $ Hexx opt pt lm (Just Blue) ob b'
   Just (Empty, b') -> if lm == fm then return . Just $ Hexx opt pt lm (Just Empty) ob b else
                         do screenWinner $ Hexx opt pt lm (Just Empty) ob b'; _ <- return . Just $ Hexx opt pt lm w ob b'
                            s <- getInputLine "   "
                            case s of
                              Just [] -> checkWinnerIO $ Hexx opt pt lm w ob b'
-                             Just s' | s' == "finalize" || (any (== True) $ match s' <$> optionsList) -> options s' $ Hexx opt pt lm w ob b'
+                             Just s' | any (== True) $ match s' <$> optionsList -> options s' $ Hexx opt pt lm w ob b'
                              _ -> checkWinnerIO $ Hexx opt pt lm (Just Blue) ob b'
   _ -> do screen g
           s <- getInputLine "   "
@@ -155,10 +148,10 @@ checkWinnerIO g@(Hexx opt pt lm w ob b) = case checkWinner b of
             Just s' | any (== True) $ match s' <$> optionsList -> options s' g
             _ -> game g
   where
-    optionsList = ["reset", "help", "quit"]
-    options s g_@(Hexx opt pt lm w oc _)
-      | s == "finalize"  = if lm == fm && w == Nothing then checkWinnerIO g_ else return . Just $ Hexx opt pt lm w ob b
-      | match s "help"   = do hexxagonHelp; checkWinnerIO g_
+    optionsList = ["reset", "help", "quit", "finalize"]
+    options s g'
+      | match s "finalize"  = if lm == fm then checkWinnerIO g' else return $ Just g'
+      | match s "help"   = do hexxagonHelp; checkWinnerIO g'
       | match s "reset"  = checkWinnerIO $ Hexx opt opt fm Nothing ob ob
       | otherwise = return Nothing
 
@@ -202,7 +195,7 @@ getFinalPosition g@(Hexx opt pt lm w ob b) ip = do
   fp <- getInputLine "   "
   case fp of
     Just [] -> return $ Right Nothing
-    Just s | s == "finalize" || (any (== True) $ match s <$> ["reset", "help", "quit"]) -> posOptions s (flip getFinalPosition ip) g
+    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> posOptions s (flip getFinalPosition ip) g
     _ -> return . Right $ fp >>= parseInput >>= checkFinalPosition b . Move ip
 
 getInitialPosition :: Hexx -> InputT IO (Either Int (Maybe Position))
@@ -214,7 +207,7 @@ getInitialPosition g@(Hexx opt pt lm w ob b@(Board mph)) = do
   ip <- getInputLine "   "
   case ip of
     Just [] -> return $ Right Nothing
-    Just s | s == "finalize" || (any (== True) $ match s <$> ["reset", "help", "quit"]) -> posOptions s getInitialPosition g
+    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> posOptions s getInitialPosition g
     _ -> return . Right $ ip >>= parseInput >>= checkInitialPosition g
 
 hexxagonTitle :: Hexagon -> InputT IO ()
@@ -232,9 +225,9 @@ hexxagonWinner w = case w of
 posOptions :: String -> (Hexx -> InputT IO (Either Int (Maybe b))) -> Hexx -> InputT IO (Either Int (Maybe b))
 posOptions s f g@(Hexx opt pt lm w ob b)
   | match s "help"  = do hexxagonHelp; return . Right $ Nothing
-  | match s "reset"  = return $ Left 0
-  | match s "exit" || match s "quit" = return $ Left 1
-  | otherwise = return $ Left 2
+  | match s "finalize" && lm /= fm = return $ Left 2
+  | match s "quit" = return $ Left 1
+  | otherwise  = return $ Left 0
 
 resetCursor :: IO ()
 resetCursor = do
@@ -332,7 +325,4 @@ testGI =
     Game 
       (BluePlayer "6373" "tnb")
       1911743228000 $ 
-      rBoard $ read "[((5,6),'r'),((5,7),'e'),((5,8),'b'),((6,6),'b'),((6,7),'b'),((6,8),'b')]"
-
-
-
+      rBoard $ read "[((1,1),'b'),((1,2),'b'),((1,3),'b'),((1,4),'b')]"
