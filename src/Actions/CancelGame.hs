@@ -44,7 +44,9 @@ action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers 
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
-        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
+        runTx s = do
+            putStrLn "Building transaction ..."
+            runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing s
 
 selectUTxO :: GYUTxOs -> IO GYUTxO
 selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "Game" (utxosRefs utxos)

@@ -1,8 +1,4 @@
 module IOFxs where
-import Control.Exception 
-  ( IOException
-  , try
-  )
 import Control.Monad.State
 import DataTypes 
   ( Board(..)
@@ -52,7 +48,6 @@ import System.IO
 import UtilityFxs 
   ( getNearbyPositions
   , makeStartingBoard
-  , makeEmptyClassicBoard
   )
 import PlutusTx.AssocMap qualified as Map
 import qualified System.Console.ANSI as C (Color(..))
@@ -61,9 +56,6 @@ import Constants
   )
 import Data.Time.Clock.POSIX 
   ( getPOSIXTime
-  )
-import Instances
-  ( destructureBoard
   )
 import Data.Char 
   ( isDigit
@@ -255,7 +247,7 @@ screenWinner (Hexx opt pt lm w ob b) = do
   return ()
 
 createCustomBoard :: IO (Maybe Board)                                        
-createCustomBoard = runInputT defaultSettings $ createCustomBoard' $ classicBoard_S9DC3
+createCustomBoard = runInputT defaultSettings $ createCustomBoard' classicBoard_S9DC3
 
 createCustomBoardHelp :: Board -> InputT IO (Maybe Board)
 createCustomBoardHelp b = do

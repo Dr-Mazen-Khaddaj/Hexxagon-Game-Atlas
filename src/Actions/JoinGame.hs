@@ -6,11 +6,11 @@ import  GeniusYield.GYConfig
 import  PlutusTx.IsData             ( UnsafeFromData(unsafeFromBuiltinData) )
 import  PlutusLedgerApi.V1.Value    ( AssetClass(..) )
 import  PlutusLedgerApi.V2          ( POSIXTime )
-import  Data.Maybe                  ( isJust )
+import  Data.Maybe                  ( isJust, fromJust )
 import  DAppConfig                  ( Config (..) )
 import  DataTypes                   ( Initialization (Add), Player (RedPlayer), GameInfo (GameInfo), GameState (Game), GameSettings (..) )
 import  Instances                   ()
-import  GYUtilities                 ( fromUTxO )
+import  GYUtilities                 ( fromUTxO, playerToGYAssetClass )
 import  IOUtilities                 ( chooseIndex )
 import  Data.Set                    qualified as Set
 import  Scripts                     qualified
@@ -46,22 +46,27 @@ action (Config coreCfg walletAddrs changeAddr _ playerNFTs) providers = do
                                     (utxosSize -> 0) -> pure Nothing
                                     xs -> Just <$> selectUTxO xs
     runGameSCAddress        <- Scripts.gyScriptToAddress <$> Scripts.runGameSC
-    identifierNFT           <- case playerNFTs of
-                                    (Set.size -> 0) -> pure Nothing
-                                    (Set.size -> 1) -> pure . Just $ Set.elemAt 0 playerNFTs
-                                    _               -> putStrLn "Multiple NFTs found!" >> Just <$> selectNFT playerNFTs
     currentSlot             <- gyGetSlotOfCurrentBlock providers
     currentTime             <- timeToPlutus <$> query (slotToBeginTime currentSlot)
-    case (gameToJoin,identifierNFT) of
-        (Just game , Just nft) -> Right <$> runTx (skeleton initialiseGameSCScript game nft runGameSCAddress currentTime currentSlot)
-        (Nothing   , Just _  ) -> pure $ Left ["No Games available to Join!"]
-        (Just _    , Nothing ) -> pure $ Left ["No Game NFTs found! Please Mint an NFT!"]
-        (Nothing   , Nothing ) -> pure $ Left ["No Games available to Join!" , "No Game NFTs found! Please Mint an NFT!"]
+    case gameToJoin of
+        Nothing -> pure $ Left ["No Games available to Join!"]
+        Just game -> do
+            let regNFT = playerToGYAssetClass . getPlayer1 . fromJust $ fromUTxO game
+                availableNFTs = Set.filter (/= regNFT) playerNFTs
+            identifierNFT <- case availableNFTs of
+                                (Set.size -> 0) -> pure Nothing
+                                (Set.size -> 1) -> pure . Just $ Set.elemAt 0 availableNFTs
+                                _               -> putStrLn "Multiple NFTs found!" >> Just <$> selectNFT availableNFTs
+            case identifierNFT of
+                Nothing -> pure $ Left ["No Game NFTs found! Please Mint an NFT!"]
+                Just nft -> Right <$> runTx (skeleton initialiseGameSCScript game nft runGameSCAddress currentTime currentSlot)
     where
         networkID = cfgNetworkId coreCfg
         query :: GYTxQueryMonadNode a -> IO a
         query = runGYTxQueryMonadNode networkID providers
-        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
+        runTx s = do
+            putStrLn "Building transaction ..."
+            runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing s
 
 selectUTxO :: GYUTxOs -> IO GYUTxO
 selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "Game" (utxosRefs utxos)

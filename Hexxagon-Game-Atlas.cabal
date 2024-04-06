@@ -2,8 +2,6 @@ cabal-version:      3.6
 name:               Hexxagon-Game-Atlas
 version:            0.1.0.0
 synopsis:           Hexxagon game on the Cardano Blockchain : Off-Chain Code
--- description:
--- homepage:
 license:            NONE
 author:             Dr-Mazen-Khaddaj, Andrew Garrett Wright
 maintainer:         MazenKhaddaj@outlook.com
@@ -11,9 +9,8 @@ maintainer:         MazenKhaddaj@outlook.com
 category:           Blockchain, Cardano, Game
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
--- extra-source-files:
 
-common common
+common language
     default-language: GHC2021
     default-extensions:
         DataKinds
@@ -31,22 +28,51 @@ common common
         ViewPatterns
         OverloadedRecordDot
 
-    ghc-options: -Wall -Wincomplete-uni-patterns -Wunused-packages
+    ghc-options: -Wall -Wincomplete-uni-patterns
+                --  -Wunused-packages
 
-common plutus-ghc-options
-    -- so unfoldings are present even when compiled without optmizations
-    ghc-options:    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-                    -Wno-partial-type-signatures
-
-    -- expose all unfoldings, so plutustx compiler can do its job
-    ghc-options:    -fexpose-all-unfoldings -fobject-code
-                    -fplugin-opt PlutusTx.Plugin:defer-errors
-
-    -- set target plutus-core version
-    ghc-options:    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
+common dependencies
+    build-depends:    base
+                    , aeson
+                    , swagger2
+                    , servant-server
+                    , servant-swagger
+                    , wai
+                    , wai-cors
+                    , http-types
+                    , warp
+                    , scotty
+                    , http-conduit
+                    , req
+                    , async
+                    , split
+                    , containers
+                    , text
+                    , mtl
+                    , bytestring
+                    , base16-bytestring
+                    , atlas-cardano
+                    , plutus-core
+                    , plutus-tx
+                    , plutus-tx-plugin
+                    , plutus-ledger-api
+                    , cardano-api
+                    , data-default
+                    , flat
+                    , cborg
+                    , serialise
+                    , deepseq
+                    , hex
+                    , haskeline
+                    , time
+                    , directory
+                    , filepath
+                    , ansi-terminal
+                    , aeson-pretty
+                    , transformers
 
 library
-    import:           common
+    import:           language, dependencies
     hs-source-dirs:   src
                     , Extras
     exposed-modules:  DataTypes
@@ -69,90 +95,19 @@ library
                     , Extras
                     , FlatInstance
 
-    build-depends:    base
-                    , aeson
-                    , atlas-cardano
-                    , swagger2
-                    , servant-server
-                    , servant-swagger
-                    , containers
-                    , text
-                    , mtl
-
-                    , bytestring
-                    , base16-bytestring
-                    , cardano-api
-                    , data-default
-                    , plutus-ledger-api
-                    , plutus-tx-plugin
-                    , plutus-tx
-                    , plutus-core
-                    , flat
-                    , cborg
-                    , serialise
-                    , deepseq
-                    , hex
-
-                    , haskeline
-                    , time
-                    , directory
-                    , filepath
-                    , ansi-terminal
-
 executable Hexxagon-Game-Atlas
-    import:           common
+    import:           language, dependencies
     hs-source-dirs:   app
-    main-is:          Main.hs
-    other-modules:    GetConfig
-    -- other-extensions:
-    ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
-    build-depends:    base
-                    , atlas-cardano
-                    , Hexxagon-Game-Atlas
-                    , directory
-                    , filepath
-                    , mtl
-                    , containers
-
-executable Hexxagon-Game-Server
-    import:           common
-    hs-source-dirs:   server
     main-is:          Main.hs
     other-modules:    GetAddresses
                       SignTransaction
                       RunServer
                       GetConfig
     ghc-options: -O2 -threaded -rtsopts -with-rtsopts=-T
-    build-depends:    base
-                    , Hexxagon-Game-Atlas
-                    , base16-bytestring
-                    , aeson-pretty
-                    , bytestring
-                    , containers
-                    , atlas-cardano
-                    , servant-server
-                    , transformers
-                    , wai
-                    , wai-cors
-                    , http-types
-                    , warp
-                    , scotty
-                    , http-conduit
-                    , req
-                    , async
-                    , text
-                    , split
-                    , directory
-                    , filepath
-
-                    , plutus-ledger-api
-                    , plutus-tx-plugin
-                    , plutus-tx
-                    , plutus-core
-                    
+    build-depends:    Hexxagon-Game-Atlas
 
 test-suite Hexxagon-Game-Atlas-test
-    import:           common
+    import:           language, dependencies
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          Main.hs
@@ -165,11 +120,7 @@ test-suite Hexxagon-Game-Atlas-test
                     , Test_UtilityFxs
     -- other-extensions:
     ghc-options: -threaded -rtsopts
-    build-depends:    base
-                    , Hexxagon-Game-Atlas
-                    , containers
-                    , atlas-cardano
-                    , mtl
+    build-depends:    Hexxagon-Game-Atlas
                     , plutus-simple-model
                     , tasty
                     , tasty-quickcheck
@@ -178,8 +129,3 @@ test-suite Hexxagon-Game-Atlas-test
                     , hedgehog
                     , hedgehog-quickcheck
                     , QuickCheck
-                    , text
-                    , plutus-ledger-api
-                    , plutus-tx
-                    , bytestring
-                    , base16-bytestring

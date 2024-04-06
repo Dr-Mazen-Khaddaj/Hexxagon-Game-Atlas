@@ -19,7 +19,9 @@ fetchWalletAddresses :: IO ([GYAddress],GYAddress)
 fetchWalletAddresses = do
     printMsg 76 . (:[]) $ "Please Fetch Wallet Addresses to proceed : " <> toICyan "http://localhost:3000"
     putStrLn "Waiting for addresses ..."
-    pollForAddresses
+    addresses <- pollForAddresses
+    putStrLn $ toIGreen "Addresses retrieved successfully"
+    pure addresses
 
 pollForAddresses :: IO ([GYAddress],GYAddress)
 pollForAddresses = do

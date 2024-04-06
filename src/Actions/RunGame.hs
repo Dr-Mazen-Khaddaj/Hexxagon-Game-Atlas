@@ -137,14 +137,22 @@ action (Config coreCfg walletAddrs changeAddr walletUTxOs playerNFTs) providers 
                             runTx $ mconcat <$> sequence    [ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
                                                             , updateMetadataSkeleton refNFTManagerSCScript refNFTUTxO
                                                             ]
-                        _ -> do
+                        TimeOut -> do
+                            let identifierNFT   = case List.find (/= gameInfo.getGameState.getPlayer'sTurn) gameInfo.getPlayers of
+                                                    Just p -> playerToGYAssetClass p
+                                                    Nothing -> error "No opponent registered!"
+                                authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
+                            runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
+                        PlayTurn _ -> do
                             let identifierNFT   = playerToGYAssetClass $ getPlayer'sTurn gameInfo.getGameState
                                 authNFTRef      = utxoRef . head . utxosToList $ filterUTxOs (utxoHasAssetClass identifierNFT) walletUTxOs
                             runTx $ skeleton runGameSCScript gameToRun authNFTRef runGame Nothing currentSlot
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
-        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
+        runTx s = do
+            putStrLn "Building transaction ..."
+            runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing s
 
 selectUTxO :: GYUTxOs -> IO GYUTxO
 selectUTxO utxos = (!!) (utxosToList utxos) <$> chooseIndex "Game" (utxosRefs utxos)
@@ -157,10 +165,6 @@ holdsRegNFT nfts utxo = any (`utxoHasAssetClass` utxo) nfts
 
 divValue :: GYValue -> Integer -> GYValue
 divValue v n = valueFromList [(,) a (div m n) | (a,m) <- valueToList v]
-
--- returns Just (GameOver winner) , Just Draw , Just TimeOut , or Nothing
-_checkGameStatus :: GameInfo -> Maybe RunGame
-_checkGameStatus = error "Undefined"
 
 --------------------------------------------------------------------------------------------------------------------------- |
 --------------------------------------------------------------------------------------------------------------------------- |

@@ -2,6 +2,7 @@ module IOUtilities  ( chooseIndex
                     , fetchFilesWithExtension
                     , askYesNo
                     , getLine'
+                    , getInt
                     , printTxID
                     , printMsg
                     , UnquotedString(..)
@@ -29,10 +30,10 @@ chooseIndex typeName list = do
 fetchFilesWithExtension :: FilePath -> String -> IO [FilePath]
 fetchFilesWithExtension dir ext = ((dir <>) <$>) . filter ((== ext) . takeExtension) <$> listDirectory dir
 
-getInt :: [Int] -> IO Int
+getInt :: forall a. (Integral a, Read a) => [a] -> IO a
 getInt range = do
     input <- getLine'
-    case readMaybe @Int input of
+    case readMaybe @a input of
         Just n -> if n `elem` range then return n else putStrLn errorMsg2 >> getInt range
         Nothing -> putStrLn errorMsg1 >> getInt range
     where

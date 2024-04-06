@@ -54,7 +54,9 @@ action (Config coreCfg walletAddrs changeAddr _ _) providers = do
     where
         networkID = cfgNetworkId coreCfg
         query = runGYTxQueryMonadNode networkID providers
-        runTx = runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing
+        runTx s = do
+            putStrLn "Building transaction ..."
+            runGYTxMonadNode networkID providers walletAddrs changeAddr Nothing s
 
 --------------------------------------------------------------------------------------------------------------------------- |
 --------------------------------------------------------------------------------------------------------------------------- |

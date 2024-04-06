@@ -1,9 +1,8 @@
 module  DAppConfig  ( Config (..)
-                    , LocalConfig (..)
                     ) where
 
 import GeniusYield.GYConfig ( GYCoreConfig )
-import GeniusYield.Types    ( GYAddress, GYPaymentSigningKey, GYAssetClass, GYUTxOs )
+import GeniusYield.Types    ( GYAddress, GYAssetClass, GYUTxOs )
 import Data.Set             ( Set )
 
 ----------------------------------------------------------------------------------------------------------------------------
@@ -26,10 +25,5 @@ instance Show Config where
         show walletUTxOs    <> "\n" <>
         show playerNFTs     <> "\n" <>
         "------------"
-
-data LocalConfig = LocalConfig
-    { getConfig     :: Config
-    , getSigningKey :: GYPaymentSigningKey
-    } deriving Show
 
 ----------------------------------------------------------------------------------------------------------------------------
