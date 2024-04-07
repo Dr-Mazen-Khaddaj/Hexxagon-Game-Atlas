@@ -17,12 +17,12 @@ Welcome to the Hexxagon Game on Cardano, a decentralized adaptation of the class
 
 ### Installation Steps
 
-1. Clone the repository:
+**1**. Clone the repository:
    ```
    git clone https://github.com/Dr-Mazen-Khaddaj/Hexxagon-Game-Atlas.git
    ```
 
-2. Set up the configuration file:
+**2**. Set up the configuration file:
 - Create a `Configurations` directory.
 - Inside `Configurations`, create a `config.json` file with the following content:
   ```json
@@ -35,7 +35,7 @@ Welcome to the Hexxagon Game on Cardano, a decentralized adaptation of the class
   ```
 - Replace `<Your-API-Key>` with a valid Maestro API key.
 
-1. Running the Game:
+**3**. Running the Game:
 - To run the game using the precompiled executable:
     ```bash
     unzip Hexxagon-Game.zip
