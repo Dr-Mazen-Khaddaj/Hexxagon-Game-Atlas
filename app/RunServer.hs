@@ -7,9 +7,9 @@ import Data.Text.Lazy           qualified as T
 
 runServer :: MVar String -> MVar String -> MVar String -> MVar String -> IO ()
 runServer usedAddrsVar changeAddrVar unsignedTxVar signedWitnessVar = scotty 3000 $ do
-    get "/"             $ file "server/Browser/index.html"
-    get "/script.js"    $ file "server/Browser/script.js"
-    get "/style.css"    $ file "server/Browser/style.css"
+    get "/"             $ file "app/Browser/index.html"
+    get "/script.js"    $ file "app/Browser/script.js"
+    get "/style.css"    $ file "app/Browser/style.css"
 
 -- Get Wallet Addresses
     -- Endpoint to receive addresses
