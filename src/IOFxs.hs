@@ -276,6 +276,8 @@ createCustomBoardHelp b = do
   outputStrLn ""
   outputStrLn "     Enter 'play' or create a custom board first."
   outputStrLn ""
+  outputStrLn "     size <1,2,3,4>: Adjust board size"
+  outputStrLn "" 
   outputStrLn "     red <space delimited coordinates>: Make selected hexagons red"
   outputStrLn "     blue <space delimited coordinates>: Make selected hexagons blue"
   outputStrLn "     empty <space delimited coordinates>: Make selected hexagons empty"
