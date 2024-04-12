@@ -14,6 +14,9 @@ module MainFxs
   , h2p
   , rBoard
   , checkGameStatus
+  , boardToMap
+  , restructureGame
+  , destructureGame
   ) where
 
 import Data.Char
@@ -162,3 +165,22 @@ rBoard iic = Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c'
 
 score :: Board -> (Int, Int)
 score (Board b) = (length . Map.toList $ Map.filter (== Red) b, length . Map.toList $ Map.filter (== Blue) b)
+
+boardToMap :: Board -> Map.Map Position Hexagon                                     
+boardToMap (Board mph) = mph
+
+restructureGame :: (Char, [((Integer, Integer), Char)]) -> (Hexagon, Board)
+restructureGame (c, iic) = (charToHex c, Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c')) <$> iic)
+  where                                              
+    charToHex c' = case c' of                                        
+      'r' -> Red                                             
+      'b' -> Blue                                           
+      _   -> Empty  
+
+destructureGame :: (Hexagon, Board) -> (Char, [((Integer, Integer), Char)])
+destructureGame (h, Board mph) = (hexToChar h, (\(p,h') -> ((getX p, getY p), hexToChar h')) <$> Map.toList mph)
+  where
+    hexToChar h' = case h' of 
+      Red   -> 'r'
+      Blue  -> 'b'
+      Empty -> 'e'

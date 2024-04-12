@@ -1,4 +1,8 @@
 module IOFxs where
+import Control.Exception                                                      
+  ( IOException
+  , try                
+  )    
 import Control.Monad.State
 import DataTypes 
   ( Board(..)
@@ -30,6 +34,9 @@ import MainFxs
   , p2h
   , rBoard
   , checkGameStatus
+  , destructureGame
+  , restructureGame
+  , boardToMap
   )
 import System.Console.ANSI 
   ( ColorIntensity(..)
@@ -83,20 +90,58 @@ playTurn gi@(GameInfo ps td (Game pt dl b)) = do
         _ -> return Nothing
     _ -> return $ checkGameStatus (round epocht * 1000) gi
 
+hexxHGame :: Hexx -> InputT IO (Maybe Hexx)
+hexxHGame g = do
+  hexxagonHelp
+  s <- getInputLine "   "
+  hexxGameOptions s g
+
+posHexxHGame :: (Hexx -> InputT IO (Either Int b)) -> Hexx -> InputT IO (Either Int b)
+posHexxHGame f g = do
+  hexxagonHelp
+  s <- getInputLine "   "
+  case s of
+    Just s' -> posHexxGameOptions s' f g
+    _       -> posHexxHGame f g
+
+hexxGameOptions :: Maybe String -> Hexx -> InputT IO (Maybe Hexx)
+hexxGameOptions st ga = do
+  case st of
+    Just [] -> checkWinnerIO ga
+    Just s  -> lsqh s ga
+    _       -> checkWinnerIO ga
+    where
+      lsqh s g@(Hexx opt _ lm _ ob _)
+        | match s "help"  = hexxHGame g
+        | match s "quit"  = return Nothing
+        | match s "reset" = checkWinnerIO $ Hexx opt opt fm Nothing ob ob
+        | match s "finalize" = if lm == fm then checkWinnerIO g else return $ Just g
+        | otherwise = checkWinnerIO g
+
+posHexxGameOptions :: String -> (Hexx -> InputT IO (Either Int b)) -> Hexx -> InputT IO (Either Int b)
+posHexxGameOptions s f g@(Hexx _ _ lm _ _ _)
+  | s == [] = f g
+  | match s "help" = posHexxHGame f g
+  | match s "finalize" = if lm == fm then return $ Left 2 else return $ Left 3
+  | match s "quit" = return $ Left 1
+  | otherwise = return $ Left 0
+
 hexxagonHelp :: InputT IO ()
 hexxagonHelp = do
   liftIO resetCursor
   outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Black, SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN " <> setSGRCode [Reset]
   outputStrLn ""
-  outputStrLn "   Usage:"
+  outputStrLn "   Enter coordinates to choose which piece to move and where."
+  outputStrLn "   Pieces can move one or two spaces in either direction."
+  outputStrLn "   Moving a peice one space will clone it, two will hop."
+  outputStrLn "   Adjacent pieces that are your opponent will convert."
+  outputStrLn "   Player with the most pieces wins."
   outputStrLn ""
-  outputStrLn "     reset: Reset to initial state"
-  outputStrLn "     finalize: Finalize first move"
-  outputStrLn "     quit: Quit game"
+  outputStrLn "     reset: Restart to current game state"
+  outputStrLn "     finalize: Submit first move to blockchain"
+  outputStrLn "     quit: Exit game"
+  outputStrLn "     help: Print this help summary page."
   outputStrLn ""
-  outputStrLn "     help: Print this help summary page"
-  outputStrLn ""
-  _ <- getInputLine "   "
   return ()
 
 hexxagon :: Hexagon -> Board -> IO (Maybe Hexx)
@@ -112,40 +157,20 @@ fm = Move (Position (-1) (-1)) (Position (-1) (-1))
 
 checkWinnerIO :: Hexx -> InputT IO (Maybe Hexx)
 checkWinnerIO g@(Hexx opt pt lm w ob b) = case checkWinner b of
-  Just (Red, b')   -> if lm == fm then return . Just $ Hexx opt pt lm (Just Red) ob b else
-                        do screenWinner $ Hexx opt pt lm (Just Red) ob b'
-                           s <- getInputLine "   "
-                           case s of
-                             Just [] -> checkWinnerIO $ Hexx opt pt lm w ob b'
-                             Just s' | any (== True) $ match s' <$> optionsList -> options s' $ Hexx opt pt lm w ob b'
-                             _ -> checkWinnerIO $ Hexx opt pt lm (Just Red) ob b'
-  Just (Blue, b')  -> if lm == fm then return . Just $ Hexx opt pt lm (Just Blue) ob b else
-                        do screenWinner $ Hexx opt pt lm (Just Blue) ob b'; _ <- return . Just $ Hexx opt pt lm w ob b'
-                           s <- getInputLine "   "
-                           case s of
-                             Just [] -> checkWinnerIO $ Hexx opt pt lm w ob b'
-                             Just s' | any (== True) $ match s' <$> optionsList -> options s' $ Hexx opt pt lm w ob b'
-                             _ -> checkWinnerIO $ Hexx opt pt lm (Just Blue) ob b'
-  Just (Empty, b') -> if lm == fm then return . Just $ Hexx opt pt lm (Just Empty) ob b else
-                        do screenWinner $ Hexx opt pt lm (Just Empty) ob b'; _ <- return . Just $ Hexx opt pt lm w ob b'
-                           s <- getInputLine "   "
-                           case s of
-                             Just [] -> checkWinnerIO $ Hexx opt pt lm w ob b'
-                             Just s' | any (== True) $ match s' <$> optionsList -> options s' $ Hexx opt pt lm w ob b'
-                             _ -> checkWinnerIO $ Hexx opt pt lm (Just Blue) ob b'
+  Just (Red, b')   -> do screenWinner $ Hexx opt pt lm (Just Red  ) ob b'
+                         s <- getInputLine "   "
+                         hexxGameOptions s g
+  Just (Blue, b')  -> do screenWinner $ Hexx opt pt lm (Just Blue ) ob b'
+                         s <- getInputLine "   "
+                         hexxGameOptions s g
+  Just (Empty, b') -> do screenWinner $ Hexx opt pt lm (Just Empty) ob b'
+                         s <- getInputLine "   "
+                         hexxGameOptions s g
   _ -> do screen g
           s <- getInputLine "   "
           case s of
             Just [] -> game g
-            Just s' | any (== True) $ match s' <$> optionsList -> options s' g
-            _ -> game g
-  where
-    optionsList = ["reset", "help", "quit", "finalize"]
-    options s g'
-      | match s "finalize"  = if lm == fm then checkWinnerIO g' else return $ Just g'
-      | match s "help"   = do hexxagonHelp; checkWinnerIO g'
-      | match s "reset"  = checkWinnerIO $ Hexx opt opt fm Nothing ob ob
-      | otherwise = return Nothing
+            _ -> hexxGameOptions s g
 
 colorize :: Char -> [Char]
 colorize c
@@ -171,12 +196,14 @@ game g@(Hexx opt pt lm w ob b) = do
           Left g' -> case g' of
             0 -> checkWinnerIO $ Hexx opt opt lm w ob ob
             1 -> return Nothing 
-            2 -> return $ Just g
+            2 -> checkWinnerIO g 
+            3 -> return $ Just g
       _ -> checkWinnerIO g
     Left g' -> case g' of
       0 -> checkWinnerIO $ Hexx opt opt lm w ob ob
       1 -> return Nothing
-      2 -> return $ Just g
+      2 -> checkWinnerIO g
+      3 -> return $ Just g
 
 getFinalPosition :: Hexx -> Position -> InputT IO (Either Int (Maybe (Position, Integer)))
 getFinalPosition g@(Hexx opt pt lm w ob b) ip = do
@@ -187,7 +214,7 @@ getFinalPosition g@(Hexx opt pt lm w ob b) ip = do
   fp <- getInputLine "   "
   case fp of
     Just [] -> return $ Right Nothing
-    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> posOptions s (flip getFinalPosition ip) g
+    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> posHexxGameOptions s (flip getFinalPosition ip) g
     _ -> return . Right $ fp >>= parseInput >>= checkFinalPosition b . Move ip
 
 getInitialPosition :: Hexx -> InputT IO (Either Int (Maybe Position))
@@ -199,7 +226,7 @@ getInitialPosition g@(Hexx opt pt lm w ob b@(Board mph)) = do
   ip <- getInputLine "   "
   case ip of
     Just [] -> return $ Right Nothing
-    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> posOptions s getInitialPosition g
+    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> posHexxGameOptions s getInitialPosition g
     _ -> return . Right $ ip >>= parseInput >>= checkInitialPosition g
 
 hexxagonTitle :: Hexagon -> InputT IO ()
@@ -213,13 +240,6 @@ hexxagonWinner w = case w of
   Just Red  -> outputStrLn $ "\n  " <> setSGRCode [SetColor Background Dull  C.Red ,  SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN WINNER! " <> setSGRCode [Reset]
   Just Blue -> outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Blue,  SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN WINNER! " <> setSGRCode [Reset]
   _         -> outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Black, SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN TIE! " <> setSGRCode [Reset]
-
-posOptions :: String -> (Hexx -> InputT IO (Either Int (Maybe b))) -> Hexx -> InputT IO (Either Int (Maybe b))
-posOptions s f g@(Hexx opt pt lm w ob b)
-  | match s "help"  = do hexxagonHelp; return . Right $ Nothing
-  | match s "finalize" && lm /= fm = return $ Left 2
-  | match s "quit" = return $ Left 1
-  | otherwise  = return $ Left 0
 
 resetCursor :: IO ()
 resetCursor = do
@@ -254,58 +274,85 @@ createCustomBoardHelp b = do
   liftIO resetCursor
   outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Black, SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN BOARD CONFIGURATION " <> setSGRCode [Reset]
   outputStrLn ""
-  outputStrLn "   Usage:"
-  outputStrLn ""
-  outputStrLn "     size <3,5,7,9>: Board size"
+  outputStrLn "     Enter 'play' or create a custom board first."
   outputStrLn ""
   outputStrLn "     red <space delimited coordinates>: Make selected hexagons red"
   outputStrLn "     blue <space delimited coordinates>: Make selected hexagons blue"
   outputStrLn "     empty <space delimited coordinates>: Make selected hexagons empty"
-  outputStrLn "     delete <space delimited coordinates>: Delete selected hexagons"
+  outputStrLn "     delete <space delimited coordinates>: Remove selected hexagons"
   outputStrLn ""
   outputStrLn "     all red: Make all hexagons red"
   outputStrLn "     all blue: Make all hexagons blue"
   outputStrLn "     all empty: Make all hexagons empty"
-  outputStrLn "     delete all: Delete all hexagons"
+  outputStrLn "     delete all: Remove all hexagons"
   outputStrLn ""
-  outputStrLn "     reset: Reset to default board"
-  outputStrLn "     finalize: Finalize board"
-  outputStrLn "     quit: Quit board configuration"
+  outputStrLn "     play: Start Game"
+  outputStrLn "     save <filepath>: Save board layout"
+  outputStrLn "     load <filepath>: Load board layout"
+  outputStrLn "     reset: Default board"
+  outputStrLn "     quit: Exit Game"
+  outputStrLn "     help: Print this help summary page."
   outputStrLn ""
-  outputStrLn "     help: Print this help summary page"
-  outputStrLn ""
-  _ <- getInputLine "   "
-  createCustomBoard' b
+  input <- getInputLine "   "
+  createCustomBoardOptions createCustomBoard' b input
 
 createCustomBoard' :: Board -> InputT IO (Maybe Board)
 createCustomBoard' b = do
   liftIO resetCursor
   outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Black, SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN BOARD CONFIGURATION " <> setSGRCode [Reset]
-  scoreIO b
+  scoreIO b                
   outputStrLn . concatMap colorize $ showBoard Edge (SelectiveCoords $ fst <$> Map.toList (boardToMap b)) b
   input <- getInputLine "   "
-  case input of
-    Just [] -> createCustomBoard' b
-    Just s
-      | match s "blue"     -> createCustomBoard' . modifyBoard b $ (\(x,y) -> Right ((Position x y), Blue)) <$> (parseConfig . tail $ words s)
-      | match s "delete"   -> if match (last $ words s) "all" then createCustomBoard' . Board $ Map.fromList [] else createCustomBoard' . modifyBoard b $ (\(x,y) -> Left (Position x y)) <$> (parseConfig . tail $ words s)
-      | match s "empty"    -> createCustomBoard' . modifyBoard b $ (\(x,y) -> Right ((Position x y), Empty)) <$> (parseConfig . tail $ words s)
-      | match s "red"      -> createCustomBoard' . modifyBoard b $ (\(x,y) -> Right ((Position x y), Red)) <$> (parseConfig . tail $ words s)
-      | match s "all"      -> allM (last $ words s)
-      | match s "help"     -> createCustomBoardHelp b
-      | match s "size" && if isDigit . last . last $ words s then (elem (sParse s) [3,5,7,9]) else False -> createCustomBoard' $ makeStartingBoard (read . last $ words s :: Integer) []
-      | elem s $ drop 3 $ inits "reset" -> createCustomBoard' classicBoard_S9DC3
-      | s ==    "finalize" -> return $ Just b 
-      | match s "quit"     -> return Nothing
-    _ -> createCustomBoard' b
-    where
-      sParse s = read . last $ words s :: Integer
-      allM s
-        | match s "blue"   = createCustomBoard' . Board $ foldr (\x -> Map.insert x Blue) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
-        | match s "empty"  = createCustomBoard' . Board $ foldr (\x -> Map.insert x Empty) (boardToMap b) $ fst <$> Map.toList (boardToMap b )
-        | match s "red"    = createCustomBoard' . Board $ foldr (\x -> Map.insert x Red) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
-        | otherwise = createCustomBoard' b
-      boardToMap (Board b) = b
+  createCustomBoardOptions createCustomBoard' b input
+
+createCustomBoardOptions :: (Board -> InputT IO (Maybe Board)) -> Board -> Maybe String -> InputT IO (Maybe Board)
+createCustomBoardOptions func b input = case input of 
+  Just [] -> func b
+  Just s
+    | match s "blue"     -> func . modifyBoard b $ (\(x,y) -> Right ((Position x y), Blue)) <$> (parseConfig . tail $ words s)
+    | match s "delete"   -> if match (last $ words s) "all" then func . Board $ Map.fromList [] else func . modifyBoard b $ (\(x,y) -> Left (Position x y)) <$> (parseConfig . tail $ words s)
+    | match s "empty"    -> func . modifyBoard b $ (\(x,y) -> Right ((Position x y), Empty)) <$> (parseConfig . tail $ words s)
+    | match s "red"      -> func . modifyBoard b $ (\(x,y) -> Right ((Position x y), Red)) <$> (parseConfig . tail $ words s)
+    | match s "all"      -> allM (last $ words s)
+    | match s "help"     -> createCustomBoardHelp b
+    | match s "size" && if isDigit . last . last $ words s then (elem (sParse s) [1,2,3,4]) else False -> func $ makeStartingBoard (sParseNum (read . last $ words s :: Integer)) []
+    | match s "play"     -> return $ Just b
+    | match s "quit"     -> return Nothing
+    | match s "load"     -> do g' <- loadGame s
+                               case g' of
+                                 Just g'' -> do
+                                   let g''' = read g'' :: (Char, [((Integer, Integer), Char)])
+                                   func . snd $ restructureGame g'''
+                                 _ -> func b
+    | match s "save"     -> do saveGame (Red, b) s; func b
+    | elem s $ drop 3 $ inits "reset" -> createCustomBoard' classicBoard_S9DC3
+  _ -> func b
+  where                
+    sParse s = read . last $ words s :: Integer
+    sParseNum s = case s of
+      1 -> 3
+      2 -> 5
+      3 -> 7
+      _ -> 9
+    allM s                             
+      | match s "blue"   = func . Board $ foldr (\x -> Map.insert x Blue) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
+      | match s "empty"  = func . Board $ foldr (\x -> Map.insert x Empty) (boardToMap b) $ fst <$> Map.toList (boardToMap b )
+      | match s "red"    = func . Board $ foldr (\x -> Map.insert x Red) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
+      | otherwise = func b
+
+saveGame :: (Hexagon, Board) -> String -> InputT IO ()
+saveGame g s = do
+  g' <- liftIO . try . writeFile (last $ words s) . show $ destructureGame g :: InputT IO (Either IOException ())
+  case g' of
+    Right _ -> return ()
+    _ -> return ()
+
+loadGame :: String -> InputT IO (Maybe String)
+loadGame s = do                                                                    
+  g <- liftIO . try . readFile . last $ words s :: InputT IO (Either IOException String)
+  case g of                                
+    Right g' -> return $ Just g'
+    _        -> return Nothing
 
 testGI :: GameInfo
 testGI = 
@@ -317,4 +364,4 @@ testGI =
     Game 
       (BluePlayer "6373" "tnb")
       1911743228000 $ 
-      rBoard $ read "[((1,1),'b'),((1,2),'b'),((1,3),'b'),((1,4),'b')]"
+      rBoard $ read "[((1,1),'r'),((1,2),'e'),((1,3),'b'),((2,1),'e'),((2,2),'e'),((2,3),'e'),((2,4),'e'),((3,1),'b'),((3,2),'e'),((3,3),'e'),((3,4),'e'),((3,5),'r'),((4,2),'e'),((4,3),'e'),((4,4),'e'),((4,5),'e'),((5,3),'r'),((5,4),'e'),((5,5),'b')]"
