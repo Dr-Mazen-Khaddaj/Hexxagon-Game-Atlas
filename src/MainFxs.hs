@@ -1,27 +1,29 @@
 module MainFxs
-  ( checkFinalPosition
+  ( boardToMap
+  , checkFinalPosition
+  , checkGameStatus
   , checkInitialPosition
   , checkWinner
-  , fillBoard
+  , destructureGame
+  , hexagonToPlayer
+  , listToBoard
   , makeMove
   , match
   , modifyBoard
   , noMoves
   , parseConfig
   , parseInput
-  , score
-  , p2h
-  , h2p
-  , rBoard
-  , checkGameStatus
-  , boardToMap
+  , playerToHexagon
   , restructureGame
-  , destructureGame
+  , score
   ) where
 
 import Data.Char
   ( digitToInt
   , isDigit
+  )
+import Data.List 
+  ( isPrefixOf
   )
 import DataTypes
   ( Block
@@ -35,42 +37,17 @@ import DataTypes
   , GameState(..)
   , RunGame(..)
   )
+import  PlutusLedgerApi.V2
+  ( POSIXTime
+  )
+import PlutusTx.AssocMap qualified as Map
 import UtilityFxs
   ( distance
   , getNearbyPositions
   )
-import PlutusTx.AssocMap qualified as Map
-import  PlutusLedgerApi.V2
-  ( POSIXTime
-  )
-import Data.List (isPrefixOf)
 
-checkGameStatus :: POSIXTime -> GameInfo -> Maybe RunGame
-checkGameStatus epocht (GameInfo ps _ (Game _ dl b)) =
-  case checkWinner b of
-  Just (Red  , _) -> Just . GameOver $ h2p ps Red
-  Just (Blue , _) -> Just . GameOver $ h2p ps Blue
-  Just (Empty, _) -> Just Draw
-  _ -> if epocht > dl then Just TimeOut else Nothing
-
-p2h :: Player -> Hexagon
-p2h p = case p of
-  RedPlayer _ _ -> Red
-  _ -> Blue
-
-h2p :: [Player] -> Hexagon -> Player
-h2p ps p = case p of
-  Red  -> case head ps of
-    RedPlayer  cs tn -> RedPlayer  cs tn
-    _ -> last ps
-  _    -> case head ps of
-    BluePlayer cs tn -> BluePlayer cs tn
-    _ -> last ps
-
-playerToHex :: Player -> Hexagon
-playerToHex p = case p of
-  RedPlayer _ _ -> Red
-  _             -> Blue
+boardToMap :: Board -> Map.Map Position Hexagon                                     
+boardToMap (Board mph) = mph
 
 checkFinalPosition :: Board -> Move -> Maybe (Position, Integer)
 checkFinalPosition (Board mph) m@(Move _ fp) = case Map.lookup fp mph of
@@ -80,8 +57,16 @@ checkFinalPosition (Board mph) m@(Move _ fp) = case Map.lookup fp mph of
     _ -> Nothing
   _ -> Nothing
 
+checkGameStatus :: POSIXTime -> GameInfo -> Maybe RunGame
+checkGameStatus epocht (GameInfo ps _ (Game _ dl b)) =
+  case checkWinner b of
+  Just (Red  , _) -> Just . GameOver $ hexagonToPlayer ps Red
+  Just (Blue , _) -> Just . GameOver $ hexagonToPlayer ps Blue
+  Just (Empty, _) -> Just Draw
+  _ -> if epocht > dl then Just TimeOut else Nothing
+
 checkInitialPosition :: Hexx -> Position -> Maybe Position
-checkInitialPosition (Hexx opt pt lm w ob b@(Board mph)) ip = case Map.lookup ip mph of
+checkInitialPosition (Hexx b@(Board mph) _ _ _ pt _) ip = case Map.lookup ip mph of
   Just h  -> if   h == pt && length (concat $ getNearbyPositions b ip Empty <$> [1,2]) > 0
              then Just ip
              else Nothing
@@ -103,24 +88,43 @@ checkWinner b@(Board mph)
 
 completeBoard :: Hexagon -> Board -> Board
 completeBoard h b = case noMoves h b of
-  False -> completeBoard h $ fillBoard h b
-  _     -> b
+  True  -> b
+  _     -> completeBoard h $ fill h b
+    where
+      fill :: Hexagon -> Board -> Board
+      fill h' b'@(Board mph) = Board . foldr (\x -> Map.insert x h') mph . concat $ (\x -> getNearbyPositions b' x Empty 2) <$> (Map.keys $ Map.filter (== h') mph)
 
-fillBoard :: Hexagon -> Board -> Board
-fillBoard h b@(Board mph) = Board . foldr (\x -> Map.insert x h) mph . concat $ (\x -> getNearbyPositions b x Empty 2) <$> (Map.keys $ Map.filter (== h) mph)
+destructureGame :: (Hexagon, Board) -> (Char, [((Integer, Integer), Char)])
+destructureGame (h, Board mph) = (hexToChar h, (\(p,h') -> ((getX p, getY p), hexToChar h')) <$> Map.toList mph)
+  where
+    hexToChar h' = case h' of 
+      Red   -> 'r'
+      Blue  -> 'b'
+      Empty -> 'e'
+
+hexagonToPlayer :: [Player] -> Hexagon -> Player
+hexagonToPlayer ps p = case p of
+  Red  -> case head ps of
+    RedPlayer  cs tn -> RedPlayer  cs tn
+    _ -> last ps
+  _    -> case head ps of
+    BluePlayer cs tn -> BluePlayer cs tn
+    _ -> last ps
+
+listToBoard :: [((Integer, Integer), Char)] -> Board
+listToBoard iic = Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c')) <$> iic
+  where
+    charToHex c' = case c' of
+      'r' -> Red
+      'b' -> Blue
+      _   -> Empty
 
 makeMove :: Hexx -> Move -> Integer -> Maybe Hexx
-makeMove (Hexx opt pt lm w ob b@(Board mph)) (Move ip fp) d = case d of
-  1 -> Just $ Hexx opt (succ pt) lm Nothing ob $
-       Board $ foldr
-       (\p -> Map.insert p pt)
-       (Map.insert fp pt mph)
-       (getNearbyPositions b fp (succ pt) 1)
-  2 -> Just $ Hexx opt (succ pt) lm Nothing ob $
-       Board $ foldr
-       (\p -> Map.insert p pt)
-       (Map.insert fp pt $ Map.insert ip Empty mph)
-       (getNearbyPositions b fp (succ pt) 1)
+makeMove (Hexx b@(Board mph) fb fm fpt pt _) (Move ip fp) d = case d of
+  1 -> Just $ Hexx (Board $ foldr (\p -> Map.insert p pt) (Map.insert fp pt mph) (getNearbyPositions b fp (succ pt) 1)) 
+                   fb fm fpt (succ pt) Nothing
+  2 -> Just $ Hexx (Board $ foldr (\p -> Map.insert p pt) (Map.insert fp pt $ Map.insert ip Empty mph) (getNearbyPositions b fp (succ pt) 1))
+                   fb fm fpt (succ pt) Nothing
   _ -> Nothing
 
 match :: String -> String -> Bool
@@ -155,19 +159,10 @@ parseInput s = case length $ words s of
        _ -> Nothing
   _ -> Nothing
 
-rBoard :: [((Integer, Integer), Char)] -> Board
-rBoard iic = Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c')) <$> iic
-  where
-    charToHex c' = case c' of
-      'r' -> Red
-      'b' -> Blue
-      _   -> Empty
-
-score :: Board -> (Int, Int)
-score (Board b) = (length . Map.toList $ Map.filter (== Red) b, length . Map.toList $ Map.filter (== Blue) b)
-
-boardToMap :: Board -> Map.Map Position Hexagon                                     
-boardToMap (Board mph) = mph
+playerToHexagon :: Player -> Hexagon
+playerToHexagon p = case p of
+  RedPlayer _ _ -> Red
+  _ -> Blue
 
 restructureGame :: (Char, [((Integer, Integer), Char)]) -> (Hexagon, Board)
 restructureGame (c, iic) = (charToHex c, Board . Map.fromList $ (\((x,y), c') -> (Position x y, charToHex c')) <$> iic)
@@ -177,10 +172,5 @@ restructureGame (c, iic) = (charToHex c, Board . Map.fromList $ (\((x,y), c') ->
       'b' -> Blue                                           
       _   -> Empty  
 
-destructureGame :: (Hexagon, Board) -> (Char, [((Integer, Integer), Char)])
-destructureGame (h, Board mph) = (hexToChar h, (\(p,h') -> ((getX p, getY p), hexToChar h')) <$> Map.toList mph)
-  where
-    hexToChar h' = case h' of 
-      Red   -> 'r'
-      Blue  -> 'b'
-      Empty -> 'e'
+score :: Board -> (Int, Int)
+score (Board b) = (length . Map.toList $ Map.filter (== Red) b, length . Map.toList $ Map.filter (== Blue) b)
