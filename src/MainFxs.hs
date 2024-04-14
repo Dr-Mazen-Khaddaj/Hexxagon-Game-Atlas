@@ -74,6 +74,7 @@ checkInitialPosition (Hexx b@(Board mph) _ _ _ pt _) ip = case Map.lookup ip mph
 
 checkWinner :: Board -> Maybe (Hexagon, Board)
 checkWinner b@(Board mph)
+  | all (== Empty)  $ Map.elems mph = Just (Empty, b)
   | not . elem Blue $ Map.elems mph = Just (Red, b)
   | not . elem Red  $ Map.elems mph = Just (Blue, b)
   | noMoves Red b = case (score $ completeBoard Blue b) of
