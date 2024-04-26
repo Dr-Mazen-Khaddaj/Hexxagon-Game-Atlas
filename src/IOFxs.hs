@@ -3,37 +3,36 @@ module IOFxs where
 import Constants
   ( classicBoard_S9DC3
   )
-import Control.Exception                                                      
+import Control.Exception
   ( IOException
-  , try                
-  )    
+  , try
+  )
 import Control.Monad.State
-import Data.Char 
+import Data.Char
   ( isDigit
   )
 import Data.List
   ( inits
   )
-import Data.Time.Clock.POSIX 
+import Data.Time.Clock.POSIX
   ( getPOSIXTime
   )
-import DataTypes 
+import DataTypes
   ( Board(..)
   , GameInfo(..)
   , GameState(..)
   , Hexagon(..)
   , Hexx(..)
   , Move(..)
-  , Player(..)
   , Position(..)
   , RunGame(..)
   )
-import Instances 
+import Instances
   ( BoardMode(..)
   , Orientation(Edge)
   , showBoard
   )
-import MainFxs 
+import MainFxs
   ( boardToMap
   , checkFinalPosition
   , checkGameStatus
@@ -41,7 +40,6 @@ import MainFxs
   , checkWinner
   , destructureGame
   , hexagonToPlayer
-  , listToBoard
   , makeMove
   , match
   , modifyBoard
@@ -52,7 +50,7 @@ import MainFxs
   , score
   )
 import PlutusTx.AssocMap qualified as Map
-import System.Console.ANSI 
+import System.Console.ANSI
   ( ColorIntensity(..)
   , ConsoleIntensity(..)
   , ConsoleLayer(..)
@@ -62,11 +60,11 @@ import System.Console.ANSI
   , setSGRCode
   )
 import System.Console.Haskeline
-import System.IO 
+import System.IO
   ( hFlush
   , stdout
   )
-import UtilityFxs 
+import UtilityFxs
   ( getNearbyPositions
   , makeStartingBoard
   )
@@ -76,7 +74,7 @@ boardConfig :: Board -> InputT IO (Maybe Board)
 boardConfig b = do
   liftIO resetCursor
   outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Black, SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN BOARD CONFIGURATION " <> setSGRCode [Reset]
-  scoreIO b                
+  scoreIO b
   outputStrLn . concatMap colorize $ showBoard Edge (SelectiveCoords $ fst <$> Map.toList (boardToMap b)) b
   boardConfigCommands b
 
@@ -86,13 +84,13 @@ boardConfigCommands b = do
   case input of
     Just [] -> boardConfig b
     Just s
-      | match s "blue"   -> boardConfig . modifyBoard b $ (\(x,y) -> Right ((Position x y), Blue)) <$> (parseConfig . tail $ words s)
+      | match s "blue"   -> boardConfig . modifyBoard b $ (\(x,y) -> Right (Position x y, Blue)) <$> (parseConfig . tail $ words s)
       | match s "delete" -> if match (last $ words s) "all" then boardConfig . Board $ Map.fromList [] else boardConfig . modifyBoard b $ (\(x,y) -> Left (Position x y)) <$> (parseConfig . tail $ words s)
-      | match s "empty"  -> boardConfig . modifyBoard b $ (\(x,y) -> Right ((Position x y), Empty)) <$> (parseConfig . tail $ words s)
-      | match s "red"    -> boardConfig . modifyBoard b $ (\(x,y) -> Right ((Position x y), Red)) <$> (parseConfig . tail $ words s)
+      | match s "empty"  -> boardConfig . modifyBoard b $ (\(x,y) -> Right (Position x y, Empty)) <$> (parseConfig . tail $ words s)
+      | match s "red"    -> boardConfig . modifyBoard b $ (\(x,y) -> Right (Position x y, Red)) <$> (parseConfig . tail $ words s)
       | match s "all"    -> allM (last $ words s)
       | match s "help"   -> boardConfigHelp b
-      | match s "size" && if isDigit . last . last $ words s then (elem (sParse s) [1,2,3,4]) else False -> boardConfig $ makeStartingBoard (sParseNum (read . last $ words s :: Integer)) []
+      | match s "size" && ((isDigit . last . last $ words s) && elem (sParse s) [1,2,3,4]) -> boardConfig $ makeStartingBoard (sParseNum (read . last $ words s :: Integer)) []
       | match s "play"   -> return $ Just b
       | match s "quit"   -> return Nothing
       | match s "load"   -> do g' <- loadGame s
@@ -104,17 +102,17 @@ boardConfigCommands b = do
       | match s "save"     -> do saveGame (Red, b) s; boardConfig b
       | elem s $ drop 3 $ inits "reset" -> boardConfig classicBoard_S9DC3
     _ -> boardConfig b
-    where                
+    where
       sParse s = read . last $ words s :: Integer
       sParseNum s = case s of
         1 -> 3
         2 -> 5
         3 -> 7
         _ -> 9
-      allM s                             
-        | match s "blue"   = boardConfig . Board $ foldr (\x -> Map.insert x Blue) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
-        | match s "empty"  = boardConfig . Board $ foldr (\x -> Map.insert x Empty) (boardToMap b) $ fst <$> Map.toList (boardToMap b )
-        | match s "red"    = boardConfig . Board $ foldr (\x -> Map.insert x Red) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
+      allM s
+        | match s "blue"   = boardConfig . Board $ foldr (`Map.insert` Blue) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
+        | match s "empty"  = boardConfig . Board $ foldr (`Map.insert` Empty) (boardToMap b) $ fst <$> Map.toList (boardToMap b )
+        | match s "red"    = boardConfig . Board $ foldr (`Map.insert` Red) (boardToMap b) $ fst <$> Map.toList (boardToMap b)
         | otherwise = boardConfig b
 
 boardConfigHelp :: Board -> InputT IO (Maybe Board)
@@ -125,7 +123,7 @@ boardConfigHelp b = do
   outputStrLn "     Enter 'play' or create a custom board first."
   outputStrLn ""
   outputStrLn "     size <1,2,3,4>: Adjust board size"
-  outputStrLn "" 
+  outputStrLn ""
   outputStrLn "     red <space delimited coordinates>: Make selected hexagons red"
   outputStrLn "     blue <space delimited coordinates>: Make selected hexagons blue"
   outputStrLn "     empty <space delimited coordinates>: Make selected hexagons empty"
@@ -145,7 +143,7 @@ boardConfigHelp b = do
   outputStrLn ""
   boardConfigCommands b
 
-boardConfigRunInputT :: IO (Maybe Board)                                        
+boardConfigRunInputT :: IO (Maybe Board)
 boardConfigRunInputT = runInputT defaultSettings $ boardConfig classicBoard_S9DC3
 
 checkWinnerIO :: Hexx -> InputT IO (Maybe Hexx)
@@ -178,7 +176,7 @@ colorize c
   | '-' == c = setSGRCode [SetColor Foreground Dull C.Black, SetColor Background Vivid C.Black] <> "E" <> setSGRCode [Reset]
   | otherwise = [c]
 
-createCustomBoard :: IO (Maybe Board)                                        
+createCustomBoard :: IO (Maybe Board)
 createCustomBoard = boardConfigRunInputT
 
 defaultMove :: Move
@@ -213,7 +211,7 @@ getFinalPosition g@(Hexx b _ _ _ pt _) ip = do
   fp <- getInputLine "   "
   case fp of
     Just [] -> return $ Right Nothing
-    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> getPosGameCommands s (flip getFinalPosition ip) g
+    Just s | or $ match s <$> ["reset", "help", "quit", "finalize"] -> getPosGameCommands s (`getFinalPosition` ip) g
     _ -> return . Right $ fp >>= parseInput >>= checkFinalPosition b . Move ip
 
 getInitialPosition :: Hexx -> InputT IO (Either Int (Maybe Position))
@@ -221,16 +219,16 @@ getInitialPosition g@(Hexx b@(Board mph) _ _ _ pt _) = do
   liftIO resetCursor
   titleDefault pt
   scoreIO b
-  outputStrLn . concatMap colorize $ showBoard Edge (SelectiveCoords (filter (\p -> length (concat $ getNearbyPositions b p Empty <$> [1,2]) > 0) $ Map.keys $ Map.filter (== pt) mph)) b
+  outputStrLn . concatMap colorize $ showBoard Edge (SelectiveCoords (filter (\p -> not (all null (getNearbyPositions b p Empty <$> [1,2]))) $ Map.keys $ Map.filter (== pt) mph)) b
   ip <- getInputLine "   "
   case ip of
     Just [] -> return $ Right Nothing
-    Just s | any (== True) $ match s <$> ["reset", "help", "quit", "finalize"] -> getPosGameCommands s getInitialPosition g
+    Just s | or $ match s <$> ["reset", "help", "quit", "finalize"] -> getPosGameCommands s getInitialPosition g
     _ -> return . Right $ ip >>= parseInput >>= checkInitialPosition g
 
 getPosGameCommands :: String -> (Hexx -> InputT IO (Either Int b)) -> Hexx -> InputT IO (Either Int b)
 getPosGameCommands s f g@(Hexx _ _ fm _ _ _)
-  | s == [] = f g
+  | null s = f g
   | match s "help" = getPosGameHelp f g
   | match s "finalize" = if fm == defaultMove then return $ Left 2 else return $ Left 3
   | match s "quit" = return $ Left 1
@@ -260,8 +258,8 @@ getPositions g@(Hexx b fb fm fpt pt w) = do
             _ -> checkWinnerIO g
           Left g' -> case g' of
             0 -> checkWinnerIO $ Hexx fb fb fm fpt fpt w
-            1 -> return Nothing 
-            2 -> checkWinnerIO g 
+            1 -> return Nothing
+            2 -> checkWinnerIO g
             _ -> return $ Just g
       _ -> checkWinnerIO g
     Left g' -> case g' of
@@ -274,9 +272,9 @@ hexxagonRunInputT :: Hexagon -> Board -> IO (Maybe Hexx)
 hexxagonRunInputT pt b = runInputT defaultSettings $ checkWinnerIO $ Hexx b b (Move (Position (-1) (-1)) (Position (-1) (-1))) pt pt Nothing
 
 loadGame :: String -> InputT IO (Maybe String)
-loadGame s = do                                                                    
+loadGame s = do
   g <- liftIO . try . readFile . last $ words s :: InputT IO (Either IOException String)
-  case g of                                
+  case g of
     Right g' -> return $ Just g'
     _        -> return Nothing
 
@@ -284,7 +282,7 @@ playTurn :: GameInfo -> IO (Maybe RunGame)
 playTurn gi@(GameInfo ps _ (Game pt dl b)) = do
   epocht <- getPOSIXTime
   case checkGameStatus (round epocht * 1000) gi of
-    Nothing -> do 
+    Nothing -> do
       hexx <- hexxagonRunInputT (playerToHexagon pt) b
       case hexx of
         Just (Hexx _ _ fm _ _ w) -> do
@@ -293,8 +291,8 @@ playTurn gi@(GameInfo ps _ (Game pt dl b)) = do
             Just Red   -> return . Just . GameOver $ hexagonToPlayer ps Red
             Just Blue  -> return . Just . GameOver $ hexagonToPlayer ps Blue
             Just Empty -> return $ Just Draw
-            _ -> if   round epocht' * 1000 > dl 
-                 then return $ Just TimeOut 
+            _ -> if   round epocht' * 1000 > dl
+                 then return $ Just TimeOut
                  else return . Just $ PlayTurn fm
         _ -> return Nothing
     _ -> return $ checkGameStatus (round epocht * 1000) gi
@@ -350,8 +348,8 @@ screenWinner (Hexx b _ _ _ _ w) = do
   return ()
 
 titleDefault :: Hexagon -> InputT IO ()
-titleDefault h = 
-  if   h == Red 
+titleDefault h =
+  if   h == Red
   then outputStrLn $ "\n  " <> setSGRCode [SetColor Background Dull C.Red  , SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN " <> setSGRCode [Reset]
   else outputStrLn $ "\n  " <> setSGRCode [SetColor Background Vivid C.Blue, SetConsoleIntensity BoldIntensity] <> " HEXXAGŌN " <> setSGRCode [Reset]
 
