@@ -186,10 +186,10 @@ gameCommands :: Maybe String -> Hexx -> InputT IO (Maybe Hexx)
 gameCommands s g = do
   case s of
     Just [] -> checkWinnerIO g
-    Just s' -> lsqh s' g
+    Just s' -> gameCommands' s' g
     _       -> checkWinnerIO g
     where
-      lsqh s' g'@(Hexx _ fb fm fpt _ _)
+      gameCommands' s' g'@(Hexx _ fb fm fpt _ _)
         | match s' "help"  = gameHelp g'
         | match s' "quit"  = return Nothing
         | match s' "reset" = checkWinnerIO $ Hexx fb fb defaultMove fpt fpt Nothing
